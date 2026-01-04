@@ -126,6 +126,8 @@ jobs:
           name: workflow-outputs
           path: |
             downloads/*.csv
+            downloads/*.png
+            downloads/*.html
             download_output.txt
             import_output.txt
             notification_output.txt
