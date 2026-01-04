@@ -198,6 +198,28 @@ class MeltwaterDownloader:
                 except:
                     continue
 
+            # 等待真正进入 Home 页面
+            logger.info("等待导航到 Home 页面...")
+            try:
+                # 等待 URL 变化或者某个 Home 页面特有的元素出现
+                self.page.wait_for_url("**/home**", timeout=15000)
+                logger.info("✅ 已导航到 Home 页面")
+            except:
+                # 如果 URL 不包含 home,尝试检测 Home 页面的特征元素
+                logger.warning("URL 不包含 home,尝试检测 Home 页面特征...")
+                try:
+                    # 等待一些 Home 页面特有的元素
+                    self.page.wait_for_selector('text=Hello', timeout=10000)
+                    logger.info("✅ 检测到 Hello 欢迎信息,已在 Home 页面")
+                except:
+                    logger.warning("未检测到明确的 Home 页面特征,等待页面稳定...")
+                    # 等待网络空闲作为最后手段
+                    try:
+                        self.page.wait_for_load_state('networkidle', timeout=15000)
+                        logger.info("✅ 网络已空闲")
+                    except:
+                        pass
+
             logger.info("登录成功!")
         except PlaywrightTimeout:
             logger.error("登录超时,可能需要验证码或凭证错误")
