@@ -368,48 +368,84 @@ class MeltwaterDownloader:
                 return filepath
 
             else:
-                # 如果 Alerts 没有现成文件,走原来的导航流程
-                logger.warning("Alerts 区域没有找到 ANZ Coverage 文件,尝试导航到 Tags 页面...")
+                # 如果 Alerts 没有现成文件,直接访问监控视图
+                logger.warning("Alerts 区域没有找到 ANZ Coverage 文件,直接访问监控视图...")
 
-                # 尝试直接导航到特定 URL (使用 load 模式避免 GitHub Actions 超时)
-                tags_url = f"{self.url}/app/tags"
-                logger.info(f"尝试直接访问: {tags_url}")
-                self.page.goto(tags_url, wait_until='load', timeout=60000)
-                time.sleep(8)  # 增加等待时间让页面完全加载
+                # 直接导航到监控视图 (使用用户提供的直达URL,避免在 Tags 页面查找标签)
+                monitor_url = "https://app.meltwater.com/a/monitor/view?searches=2062364&type=tag"
+                logger.info(f"直接访问监控视图: {monitor_url}")
+                self.page.goto(monitor_url, wait_until='load', timeout=60000)
+                time.sleep(8)  # 等待页面完全加载
 
                 # 保存截图
-                screenshot_path = os.path.join(self.download_path, "debug_tags_page_direct.png")
+                screenshot_path = os.path.join(self.download_path, "debug_monitor_view.png")
                 self.page.screenshot(path=screenshot_path)
-                logger.info(f"已保存 Tags 页面截图: {screenshot_path}")
+                logger.info(f"已保存监控视图截图: {screenshot_path}")
 
-                # 找 ANZ Coverage 2025
-                logger.info("步骤3: 点击 ANZ Coverage 2025...")
-                anz_coverage_selectors = [
-                    'text=ANZ Coverage 2025',
-                    'a:has-text("ANZ Coverage 2025")',
-                    'button:has-text("ANZ Coverage 2025")',
-                    '[title*="ANZ Coverage 2025"]',
+                # 在监控视图页面找到并点击下载按钮
+                logger.info("步骤4: 在监控视图中找到下载按钮...")
+
+                # 监控视图页面的下载按钮选择器
+                monitor_download_selectors = [
+                    # 基本文本匹配
+                    'button:has-text("Download")',
+                    'button:text-is("Download")',
+                    '[role="button"]:has-text("Download")',
+                    'a:has-text("Download")',
+
+                    # 包含导出/下载的按钮
+                    'button:has-text("Export")',
+                    '[role="button"]:has-text("Export")',
+
+                    # 可能在特定区域内
+                    '[class*="monitor"] button:has-text("Download")',
+                    '[class*="search"] button:has-text("Download")',
+                    '[class*="action"] button:has-text("Download")',
+
+                    # CSV 相关
+                    'button:has-text("CSV")',
+                    'a:has-text("CSV")',
+                    'a[href*=".csv"]',
+
+                    # 通用下载图标
+                    'button[aria-label*="download" i]',
+                    'button[title*="download" i]',
+                    '[data-test*="download"]',
+                    '[data-testid*="download"]',
                 ]
 
-                anz_found = False
-                for selector in anz_coverage_selectors:
+                download_found = False
+                for selector in monitor_download_selectors:
                     try:
-                        if self.page.locator(selector).count() > 0:
-                            self.page.click(selector, timeout=5000)
-                            logger.info(f"✅ 已点击 ANZ Coverage 2025: {selector}")
-                            time.sleep(3)
-                            anz_found = True
+                        locator = self.page.locator(selector)
+                        count = locator.count()
+                        if count > 0:
+                            logger.info(f"✅ 找到 {count} 个下载元素: {selector}")
+
+                            # 设置下载事件监听
+                            with self.page.expect_download(timeout=30000) as download_info:
+                                locator.first.click(timeout=5000)
+                                logger.info(f"✅ 已点击下载元素: {selector}")
+
+                            download = download_info.value
+                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                            filename = f"meltwater_export_{timestamp}.csv"
+                            filepath = os.path.join(self.download_path, filename)
+                            download.save_as(filepath)
+                            logger.info(f"✅ 文件已保存: {filepath}")
+
+                            download_found = True
                             break
-                    except:
+                    except Exception as e:
+                        logger.debug(f"尝试下载元素选择器失败: {selector} - {str(e)}")
                         continue
 
-                if not anz_found:
-                    logger.error("未找到 ANZ Coverage 2025")
-                    screenshot_path = os.path.join(self.download_path, "error_no_anz_coverage.png")
+                if not download_found:
+                    logger.error("❌ 在监控视图中未找到下载按钮")
+                    screenshot_path = os.path.join(self.download_path, "error_no_download_button.png")
                     self.page.screenshot(path=screenshot_path)
-                    raise Exception("未找到 ANZ Coverage 2025")
-
-                raise Exception("导航流程暂未完全实现")
+                    logger.info(f"已保存错误截图: {screenshot_path}")
+                    raise Exception("在监控视图中未找到下载按钮")
 
         except Exception as e:
             logger.error(f"导出数据时出错: {str(e)}")
