@@ -29,20 +29,37 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
+          playwright install chromium
+          playwright install-deps
 
-      - name: Download CSV file
+      - name: Download CSV from Meltwater
+        env:
+          MELTWATER_EMAIL: ${{ secrets.MELTWATER_EMAIL }}
+          MELTWATER_PASSWORD: ${{ secrets.MELTWATER_PASSWORD }}
+          MELTWATER_URL: ${{ secrets.MELTWATER_URL }}
+          DOWNLOAD_PATH: ./downloads
         run: |
-          # 如果手动触发时提供了 CSV URL,则下载
+          # 如果手动触发时提供了 CSV URL,直接下载
           if [ -n "${{ github.event.inputs.csv_url }}" ]; then
-            echo "从 URL 下载 CSV 文件: ${{ github.event.inputs.csv_url }}"
+            echo "📥 从 URL 下载 CSV 文件: ${{ github.event.inputs.csv_url }}"
             curl -L -o meltwater_export.csv "${{ github.event.inputs.csv_url }}"
           else
-            echo "⚠️ 未提供 CSV 文件"
-            echo "请通过以下方式之一提供 CSV 文件:"
-            echo "1. 手动触发工作流时提供 csv_url 参数"
-            echo "2. 配置自动下载逻辑"
-            echo "3. 将 CSV 文件作为 artifact 上传"
-            exit 1
+            # 否则自动登录 Meltwater 并下载
+            echo "🤖 自动登录 Meltwater 并下载数据..."
+            mkdir -p downloads
+            python meltwater_downloader.py > download_output.txt 2>&1
+
+            # 获取下载的文件路径
+            DOWNLOADED_FILE=$(grep "SUCCESS:" download_output.txt | cut -d':' -f2)
+
+            if [ -n "$DOWNLOADED_FILE" ] && [ -f "$DOWNLOADED_FILE" ]; then
+              echo "✅ 下载成功: $DOWNLOADED_FILE"
+              cp "$DOWNLOADED_FILE" meltwater_export.csv
+            else
+              echo "❌ 自动下载失败"
+              cat download_output.txt
+              exit 1
+            fi
           fi
 
       - name: Run import script
@@ -57,11 +74,14 @@ jobs:
         run: |
           python meltwater_auto_import.py
 
-      - name: Upload logs
+      - name: Upload logs and screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: import-logs
           path: |
             *.log
+            *.txt
+            downloads/*.png
+            downloads/*.csv
           retention-days: 30
