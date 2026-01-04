@@ -71,11 +71,27 @@ class MeltwaterDownloader:
         # 等待登录页面加载
         time.sleep(3)
 
+        # 保存初始页面截图用于调试
+        try:
+            screenshot_path = os.path.join(self.download_path, "debug_step1_initial.png")
+            self.page.screenshot(path=screenshot_path)
+            logger.info(f"已保存初始页面截图: {screenshot_path}")
+        except:
+            pass
+
         # 第一步: 输入邮箱
         logger.info("第一步: 输入邮箱...")
         email_selector = 'input[type="email"], input[name="email"], input[id="email"]'
         self.page.wait_for_selector(email_selector, timeout=30000)
         self.page.fill(email_selector, self.email)
+
+        # 保存填写邮箱后的截图
+        try:
+            screenshot_path = os.path.join(self.download_path, "debug_step2_email_filled.png")
+            self.page.screenshot(path=screenshot_path)
+            logger.info(f"已保存邮箱填写后截图: {screenshot_path}")
+        except:
+            pass
 
         # 查找并点击 Next/Continue 按钮
         logger.info("点击 Next 按钮...")
@@ -83,14 +99,15 @@ class MeltwaterDownloader:
             'button:has-text("Next")',
             'button:has-text("Continue")',
             'button[type="submit"]',
-            'input[type="submit"]'
+            'input[type="submit"]',
+            'button',  # 最后尝试所有按钮
         ]
 
         next_clicked = False
         for selector in next_button_selectors:
             try:
                 if self.page.locator(selector).count() > 0:
-                    self.page.click(selector)
+                    self.page.click(selector, timeout=5000)
                     logger.info(f"已点击 Next 按钮: {selector}")
                     next_clicked = True
                     break
@@ -99,9 +116,24 @@ class MeltwaterDownloader:
 
         if not next_clicked:
             logger.warning("未找到 Next 按钮,可能是单页登录,继续...")
+            # 保存未找到按钮时的截图
+            try:
+                screenshot_path = os.path.join(self.download_path, "debug_no_next_button.png")
+                self.page.screenshot(path=screenshot_path)
+                logger.info(f"已保存未找到Next按钮截图: {screenshot_path}")
+            except:
+                pass
 
         # 等待页面跳转
         time.sleep(3)
+
+        # 保存等待后的截图
+        try:
+            screenshot_path = os.path.join(self.download_path, "debug_step3_after_wait.png")
+            self.page.screenshot(path=screenshot_path)
+            logger.info(f"已保存等待后截图: {screenshot_path}")
+        except:
+            pass
 
         # 第二步: 输入密码
         logger.info("第二步: 输入密码...")
