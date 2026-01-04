@@ -375,7 +375,21 @@ class MeltwaterDownloader:
                 monitor_url = "https://app.meltwater.com/a/monitor/view?searches=2062364&type=tag"
                 logger.info(f"直接访问监控视图: {monitor_url}")
                 self.page.goto(monitor_url, wait_until='load', timeout=60000)
-                time.sleep(8)  # 等待页面完全加载
+
+                # 等待页面完全加载 - GitHub Actions 环境可能需要更长时间
+                logger.info("等待页面完全加载...")
+                time.sleep(5)
+
+                # 等待网络空闲
+                try:
+                    self.page.wait_for_load_state('networkidle', timeout=20000)
+                    logger.info("✅ 网络已空闲")
+                except:
+                    logger.warning("网络未完全空闲,但继续执行")
+
+                # 额外等待以确保 JavaScript 渲染完成
+                logger.info("等待 JavaScript 渲染完成...")
+                time.sleep(10)
 
                 # 保存截图
                 screenshot_path = os.path.join(self.download_path, "debug_monitor_view.png")
@@ -385,47 +399,64 @@ class MeltwaterDownloader:
                 # 在监控视图页面找到并点击下载按钮
                 logger.info("步骤4: 在监控视图中找到下载按钮...")
 
-                # 监控视图页面的下载按钮选择器
-                monitor_download_selectors = [
-                    # 基本文本匹配
-                    'button:has-text("Download")',
-                    'button:text-is("Download")',
-                    '[role="button"]:has-text("Download")',
-                    'a:has-text("Download")',
+                # 策略1: 尝试使用 JavaScript 查找所有可能的下载按钮
+                logger.info("策略1: 使用 JavaScript 查找下载按钮...")
+                try:
+                    # 使用 JavaScript 获取所有可能的下载按钮信息
+                    buttons_info = self.page.evaluate("""
+                        () => {
+                            const buttons = [];
 
-                    # 包含导出/下载的按钮
-                    'button:has-text("Export")',
-                    '[role="button"]:has-text("Export")',
+                            // 查找所有按钮和链接
+                            document.querySelectorAll('button, a, [role="button"]').forEach((el, index) => {
+                                const text = el.textContent?.trim() || '';
+                                const ariaLabel = el.getAttribute('aria-label') || '';
+                                const title = el.getAttribute('title') || '';
+                                const className = el.className || '';
+                                const href = el.getAttribute('href') || '';
 
-                    # 可能在特定区域内
-                    '[class*="monitor"] button:has-text("Download")',
-                    '[class*="search"] button:has-text("Download")',
-                    '[class*="action"] button:has-text("Download")',
+                                // 判断是否可能是下载按钮
+                                const keywords = ['download', 'export', 'csv', 'save'];
+                                const isDownloadButton = keywords.some(keyword =>
+                                    text.toLowerCase().includes(keyword) ||
+                                    ariaLabel.toLowerCase().includes(keyword) ||
+                                    title.toLowerCase().includes(keyword) ||
+                                    className.toLowerCase().includes(keyword) ||
+                                    href.toLowerCase().includes(keyword)
+                                );
 
-                    # CSV 相关
-                    'button:has-text("CSV")',
-                    'a:has-text("CSV")',
-                    'a[href*=".csv"]',
+                                if (isDownloadButton) {
+                                    el.setAttribute('data-download-index', index.toString());
+                                    buttons.push({
+                                        index: index,
+                                        text: text,
+                                        ariaLabel: ariaLabel,
+                                        title: title,
+                                        className: className,
+                                        href: href,
+                                        tagName: el.tagName
+                                    });
+                                }
+                            });
 
-                    # 通用下载图标
-                    'button[aria-label*="download" i]',
-                    'button[title*="download" i]',
-                    '[data-test*="download"]',
-                    '[data-testid*="download"]',
-                ]
+                            return buttons;
+                        }
+                    """)
 
-                download_found = False
-                for selector in monitor_download_selectors:
-                    try:
-                        locator = self.page.locator(selector)
-                        count = locator.count()
-                        if count > 0:
-                            logger.info(f"✅ 找到 {count} 个下载元素: {selector}")
+                    logger.info(f"JavaScript 找到 {len(buttons_info)} 个可能的下载按钮:")
+                    for btn in buttons_info:
+                        logger.info(f"  - [{btn['index']}] {btn['tagName']}: {btn['text'][:50]} (aria-label: {btn['ariaLabel']}, href: {btn['href'][:50] if btn['href'] else 'N/A'})")
 
-                            # 设置下载事件监听
+                    # 尝试点击找到的按钮
+                    download_found = False
+                    for btn in buttons_info:
+                        try:
+                            logger.info(f"尝试点击按钮 [{btn['index']}]: {btn['text'][:30]}...")
+                            selector = f"[data-download-index='{btn['index']}']"
+
                             with self.page.expect_download(timeout=30000) as download_info:
-                                locator.first.click(timeout=5000)
-                                logger.info(f"✅ 已点击下载元素: {selector}")
+                                self.page.click(selector, timeout=5000)
+                                logger.info(f"✅ 已点击下载按钮: {btn['text'][:30]}")
 
                             download = download_info.value
                             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -435,16 +466,85 @@ class MeltwaterDownloader:
                             logger.info(f"✅ 文件已保存: {filepath}")
 
                             download_found = True
-                            break
-                    except Exception as e:
-                        logger.debug(f"尝试下载元素选择器失败: {selector} - {str(e)}")
-                        continue
+                            return filepath
+
+                        except Exception as e:
+                            logger.debug(f"点击按钮 [{btn['index']}] 失败: {str(e)}")
+                            continue
+
+                except Exception as e:
+                    logger.warning(f"JavaScript 策略失败: {str(e)}")
+                    download_found = False
+
+                # 策略2: 使用传统选择器(fallback)
+                if not download_found:
+                    logger.info("策略2: 使用传统选择器查找下载按钮...")
+
+                    monitor_download_selectors = [
+                        # 基本文本匹配
+                        'button:has-text("Download")',
+                        'button:text-is("Download")',
+                        '[role="button"]:has-text("Download")',
+                        'a:has-text("Download")',
+
+                        # 包含导出/下载的按钮
+                        'button:has-text("Export")',
+                        '[role="button"]:has-text("Export")',
+
+                        # 可能在特定区域内
+                        '[class*="monitor"] button:has-text("Download")',
+                        '[class*="search"] button:has-text("Download")',
+                        '[class*="action"] button:has-text("Download")',
+
+                        # CSV 相关
+                        'button:has-text("CSV")',
+                        'a:has-text("CSV")',
+                        'a[href*=".csv"]',
+
+                        # 通用下载图标
+                        'button[aria-label*="download" i]',
+                        'button[title*="download" i]',
+                        '[data-test*="download"]',
+                        '[data-testid*="download"]',
+                    ]
+
+                    for selector in monitor_download_selectors:
+                        try:
+                            locator = self.page.locator(selector)
+                            count = locator.count()
+                            if count > 0:
+                                logger.info(f"✅ 找到 {count} 个下载元素: {selector}")
+
+                                # 设置下载事件监听
+                                with self.page.expect_download(timeout=30000) as download_info:
+                                    locator.first.click(timeout=5000)
+                                    logger.info(f"✅ 已点击下载元素: {selector}")
+
+                                download = download_info.value
+                                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                filename = f"meltwater_export_{timestamp}.csv"
+                                filepath = os.path.join(self.download_path, filename)
+                                download.save_as(filepath)
+                                logger.info(f"✅ 文件已保存: {filepath}")
+
+                                download_found = True
+                                return filepath
+                        except Exception as e:
+                            logger.debug(f"尝试下载元素选择器失败: {selector} - {str(e)}")
+                            continue
 
                 if not download_found:
                     logger.error("❌ 在监控视图中未找到下载按钮")
                     screenshot_path = os.path.join(self.download_path, "error_no_download_button.png")
-                    self.page.screenshot(path=screenshot_path)
+                    self.page.screenshot(path=screenshot_path, full_page=True)
                     logger.info(f"已保存错误截图: {screenshot_path}")
+
+                    # 输出页面 HTML 用于调试
+                    html_path = os.path.join(self.download_path, "error_page.html")
+                    with open(html_path, 'w', encoding='utf-8') as f:
+                        f.write(self.page.content())
+                    logger.info(f"已保存页面 HTML: {html_path}")
+
                     raise Exception("在监控视图中未找到下载按钮")
 
         except Exception as e:
