@@ -32,3 +32,8 @@ ENV/
 # CSV 数据文件
 *.csv
 Meltwater/
+
+# Browser cache and data
+browser_data/
+*.pyc
+__pycache__/
