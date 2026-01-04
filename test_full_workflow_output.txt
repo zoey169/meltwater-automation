@@ -1,0 +1,149 @@
+[2026-01-04 14:56:29] ============================================================
+[2026-01-04 14:56:29] Meltwater 完整流程测试开始
+[2026-01-04 14:56:29] ============================================================
+[2026-01-04 14:56:29] 
+步骤 0: 检查环境变量
+[2026-01-04 14:56:29] ✅ 所有必需的环境变量已设置
+[2026-01-04 14:56:29] 
+============================================================
+[2026-01-04 14:56:29] 步骤 1: 从 Meltwater 下载 CSV 文件
+[2026-01-04 14:56:29] ============================================================
+[2026-01-04 14:56:29] 开始: Meltwater CSV 下载
+[2026-01-04 14:56:29] 命令: export MELTWATER_EMAIL="tove.berkhout@anker.com" && export MELTWATER_PASSWORD='P3$NwcskGq6!!s3' && export MELTWATER_URL="https://app.meltwater.com" && export DOWNLOAD_PATH="./downloads" && python3 meltwater_downloader.py
+[2026-01-04 14:57:50] ✅ 成功: Meltwater CSV 下载
+[2026-01-04 14:57:50] ✅ CSV 文件下载成功: ./downloads/meltwater_export_20260104_145749.csv
+[2026-01-04 14:57:50] 
+============================================================
+[2026-01-04 14:57:50] 步骤 2: 导入数据到飞书多维表格
+[2026-01-04 14:57:50] ============================================================
+[2026-01-04 14:57:50] 开始: 导入数据到多维表格
+[2026-01-04 14:57:50] 命令: export FEISHU_APP_ID="cli_a702c225665e100d" && export FEISHU_APP_SECRET="5D7PoQaMtb8Er1qqfUnGpfcYiFekaX2b" && export BITABLE_APP_TOKEN="WBWLbcH7ba2oCDsZqNScxVF2nzc" && export BITABLE_TABLE_ID="tblvQQ7CCuLM4TLD" && export CSV_FILE_PATH="./downloads/meltwater_export_20260104_145749.csv" && python3 meltwater_auto_import.py
+[2026-01-04 14:57:53] ✅ 成功: 导入数据到多维表格
+[2026-01-04 14:57:53] ✅ 数据导入成功
+[2026-01-04 14:57:53] 输出:
+→ 正在获取 tenant_access_token...
+✓ 成功获取 access_token
+→ 正在获取现有表格中的 Document ID...
+✗ 获取现有 Document ID 失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/search?page_size=500
+✓ 找到 0 个现有 Document ID
+→ 读取 CSV 文件: ./downloads/meltwater_export_20260104_145749.csv
+✓ 使用编码: utf-16
+✓ CSV 总记录数: 214
+✓ 重复记录数: 0
+✓ 新增记录数: 214
+
+============================================================
+开始导入数据到飞书多维表格
+目标表格: WBWLbcH7ba2oCDsZqNScxVF2nzc/tblvQQ7CCuLM4TLD
+总记录数: 214
+批次大小: 15
+============================================================
+
+→ 分割为 15 个批次
+
+[1/15] 处理批次 1
+  → 包含 15 条记录
+  → 正在插入...
+✗ HTTP 请求失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+  响应内容: {"code":91402,"msg":"NOTEXIST","data":{}}
+  ✗ 处理批次失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+[2/15] 处理批次 2
+  → 包含 15 条记录
+  → 正在插入...
+✗ HTTP 请求失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+  响应内容: {"code":91402,"msg":"NOTEXIST","data":{}}
+  ✗ 处理批次失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+[3/15] 处理批次 3
+  → 包含 15 条记录
+  → 正在插入...
+✗ HTTP 请求失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+  响应内容: {"code":91402,"msg":"NOTEXIST","data":{}}
+  ✗ 处理批次失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+[4/15] 处理批次 4
+  → 包含 15 条记录
+  → 正在插入...
+✗ HTTP 请求失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+  响应内容: {"code":91402,"msg":"NOTEXIST","data":{}}
+  ✗ 处理批次失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+[5/15] 处理批次 5
+  → 包含 15 条记录
+  → 正在插入...
+✗ HTTP 请求失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+  响应内容: {"code":91402,"msg":"NOTEXIST","data":{}}
+  ✗ 处理批次失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+[6/15] 处理批次 6
+  → 包含 15 条记录
+  → 正在插入...
+✗ HTTP 请求失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+  响应内容: {"code":91402,"msg":"NOTEXIST","data":{}}
+  ✗ 处理批次失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+[7/15] 处理批次 7
+  → 包含 15 条记录
+  → 正在插入...
+✗ HTTP 请求失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+  响应内容: {"code":91402,"msg":"NOTEXIST","data":{}}
+  ✗ 处理批次失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+[8/15] 处理批次 8
+  → 包含 15 条记录
+  → 正在插入...
+✗ HTTP 请求失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+  响应内容: {"code":91402,"msg":"NOTEXIST","data":{}}
+  ✗ 处理批次失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+[9/15] 处理批次 9
+  → 包含 15 条记录
+  → 正在插入...
+✗ HTTP 请求失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+  响应内容: {"code":91402,"msg":"NOTEXIST","data":{}}
+  ✗ 处理批次失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+[10/15] 处理批次 10
+  → 包含 15 条记录
+  → 正在插入...
+✗ HTTP 请求失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+  响应内容: {"code":91402,"msg":"NOTEXIST","data":{}}
+  ✗ 处理批次失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+[11/15] 处理批次 11
+  → 包含 15 条记录
+  → 正在插入...
+✗ HTTP 请求失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+  响应内容: {"code":91402,"msg":"NOTEXIST","data":{}}
+  ✗ 处理批次失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+[12/15] 处理批次 12
+  → 包含 15 条记录
+  → 正在插入...
+✗ HTTP 请求失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+  响应内容: {"code":91402,"msg":"NOTEXIST","data":{}}
+  ✗ 处理批次失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+[13/15] 处理批次 13
+  → 包含 15 条记录
+  → 正在插入...
+✗ HTTP 请求失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+  响应内容: {"code":91402,"msg":"NOTEXIST","data":{}}
+  ✗ 处理批次失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+[14/15] 处理批次 14
+  → 包含 15 条记录
+  → 正在插入...
+✗ HTTP 请求失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+  响应内容: {"code":91402,"msg":"NOTEXIST","data":{}}
+  ✗ 处理批次失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+[15/15] 处理批次 15
+  → 包含 4 条记录
+  → 正在插入...
+✗ HTTP 请求失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+  响应内容: {"code":91402,"msg":"NOTEXIST","data":{}}
+  ✗ 处理批次失败: 400 Client Error: Bad Request for url: https://open.feishu.cn/open-apis/bitable/v1/apps/WBWLbcH7ba2oCDsZqNScxVF2nzc/tables/tblvQQ7CCuLM4TLD/records/batch_create?user_id_type=open_id
+
+============================================================
+导入完成!
+成功: 0 条
+失败: 214 条
+总计: 214 条
+成功率: 0.0%
+============================================================
+
+
+[2026-01-04 14:57:53] 
+============================================================
+[2026-01-04 14:57:53] 🎉 完整流程测试成功!
+[2026-01-04 14:57:53] ============================================================
+[2026-01-04 14:57:53] 下载文件: ./downloads/meltwater_export_20260104_145749.csv
+[2026-01-04 14:57:53] 导入完成时间: 2026-01-04 14:57:53

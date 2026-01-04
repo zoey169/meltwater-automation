@@ -396,144 +396,174 @@ class MeltwaterDownloader:
                 self.page.screenshot(path=screenshot_path)
                 logger.info(f"已保存监控视图截图: {screenshot_path}")
 
-                # 在监控视图页面找到并点击下载按钮
+                # 在监控视图页面触发导出
                 logger.info("步骤4: 触发导出请求...")
 
-                # 新策略: 先触发导出请求,而不是查找现有的下载按钮
-                # 因为 GitHub Actions 环境是全新的,没有预先存在的导出文件
+                # 实际的 UI 流程:
+                # 1. 点击下载图标
+                # 2. 等待对话框出现
+                # 3. 点击对话框中的确认按钮 (使用默认选项)
+                # 4. 等待数据准备
+                # 5. 检测右上角的浮动通知窗口
+                # 6. 点击浮动窗口下载,或者从铃铛图标的通知中心下载
 
-                # 查找并点击 Export/导出 按钮来触发新的导出请求
                 export_triggered = False
-                export_selectors = [
-                    'button:has-text("Export")',
-                    'button:has-text("导出")',
-                    'a:has-text("Export")',
-                    'a:has-text("导出")',
-                    '[aria-label*="Export"]',
-                    '[aria-label*="导出"]',
-                    'button:has-text("Download")',
-                    'button:has-text("下载")',
-                    # 可能需要先打开菜单
-                    'button[aria-label="Actions"]',
-                    'button[aria-label="More options"]',
-                    'button:has-text("Actions")',
-                    'button:has-text("More")',
+
+                # Step 4.1: 查找并点击下载图标
+                logger.info("步骤4.1: 查找下载图标...")
+                download_icon_selectors = [
+                    'button[aria-label*="Download"]',
+                    'button[aria-label*="download"]',
+                    'button[title*="Download"]',
+                    'button[title*="download"]',
+                    '[data-testid*="download"]',
+                    'svg[data-icon="download"]',  # SVG icon
+                    'button:has(svg[data-icon="download"])',
+                    # 可能是一个带图标的按钮
+                    'button:has([class*="download"])',
+                    'button:has([class*="Download"])',
+                    # 或者直接是图标元素
+                    '[class*="download-icon"]',
+                    '[class*="downloadIcon"]',
                 ]
 
-                logger.info("尝试找到 Export 按钮...")
-                for selector in export_selectors:
+                icon_clicked = False
+                for selector in download_icon_selectors:
                     try:
                         locator = self.page.locator(selector)
-                        if locator.count() > 0:
-                            logger.info(f"✅ 找到可能的导出按钮: {selector}")
-                            locator.first.click(timeout=5000)
-                            logger.info(f"✅ 已点击按钮: {selector}")
-                            time.sleep(2)  # 等待响应
-
-                            # 保存点击后的截图
-                            screenshot_path = os.path.join(self.download_path, f"debug_after_click_{selector.replace(':', '_').replace('[', '').replace(']', '')[:30]}.png")
+                        count = locator.count()
+                        if count > 0:
+                            logger.info(f"✅ 找到 {count} 个下载图标元素: {selector}")
+                            # 保存截图查看图标位置
+                            screenshot_path = os.path.join(self.download_path, f"debug_found_icon_{selector.replace(':', '_').replace('[', '').replace(']', '')[:30]}.png")
                             self.page.screenshot(path=screenshot_path)
 
-                            # 检查是否打开了菜单或对话框
-                            # 如果是菜单按钮,继续查找导出选项
-                            if "Action" in selector or "More" in selector or "menu" in selector.lower():
-                                logger.info("可能打开了菜单,继续查找导出选项...")
-                                time.sleep(1)
-
-                                # 在菜单中查找导出选项
-                                menu_export_selectors = [
-                                    'button:has-text("Export")',
-                                    'a:has-text("Export")',
-                                    '[role="menuitem"]:has-text("Export")',
-                                    'li:has-text("Export")',
-                                ]
-
-                                for menu_selector in menu_export_selectors:
-                                    try:
-                                        menu_locator = self.page.locator(menu_selector)
-                                        if menu_locator.count() > 0:
-                                            logger.info(f"✅ 在菜单中找到导出选项: {menu_selector}")
-                                            menu_locator.first.click(timeout=5000)
-                                            logger.info("✅ 已点击导出选项")
-                                            export_triggered = True
-                                            time.sleep(2)
-                                            break
-                                    except Exception as e:
-                                        logger.debug(f"菜单导出选项失败: {menu_selector} - {str(e)}")
-                                        continue
-                            else:
-                                export_triggered = True
-
-                            if export_triggered:
-                                break
+                            # 尝试点击第一个
+                            locator.first.click(timeout=5000)
+                            logger.info(f"✅ 已点击下载图标: {selector}")
+                            icon_clicked = True
+                            time.sleep(2)  # 等待对话框出现
+                            break
                     except Exception as e:
-                        logger.debug(f"导出按钮选择器失败: {selector} - {str(e)}")
+                        logger.debug(f"下载图标选择器失败: {selector} - {str(e)}")
                         continue
 
-                if not export_triggered:
-                    logger.warning("⚠️ 未能触发导出请求,尝试备用方案...")
-
-                    # 备用方案: 使用 JavaScript 查找所有可能的导出按钮
-                    logger.info("使用 JavaScript 查找导出按钮...")
+                # 如果没找到特定的下载图标,使用 JavaScript 全局搜索
+                if not icon_clicked:
+                    logger.info("未找到明确的下载图标,使用 JavaScript 全局搜索...")
                     try:
-                        buttons_info = self.page.evaluate("""
+                        icons_info = self.page.evaluate("""
                             () => {
-                                const buttons = [];
-                                document.querySelectorAll('button, a, [role="button"], [role="menuitem"]').forEach((el, index) => {
+                                const elements = [];
+                                document.querySelectorAll('button, a, [role="button"]').forEach((el, index) => {
                                     const text = el.textContent?.trim() || '';
                                     const ariaLabel = el.getAttribute('aria-label') || '';
                                     const title = el.getAttribute('title') || '';
+                                    const className = el.className || '';
 
-                                    const keywords = ['export', 'download', '导出', '下载'];
+                                    // 查找包含 download 相关关键词的元素
+                                    const keywords = ['download', '下载'];
                                     const hasKeyword = keywords.some(keyword =>
                                         text.toLowerCase().includes(keyword.toLowerCase()) ||
                                         ariaLabel.toLowerCase().includes(keyword.toLowerCase()) ||
-                                        title.toLowerCase().includes(keyword.toLowerCase())
+                                        title.toLowerCase().includes(keyword.toLowerCase()) ||
+                                        className.toLowerCase().includes(keyword.toLowerCase())
                                     );
 
                                     if (hasKeyword) {
-                                        el.setAttribute('data-export-index', index.toString());
-                                        buttons.push({
+                                        el.setAttribute('data-download-index', index.toString());
+                                        elements.push({
                                             index: index,
-                                            text: text,
+                                            text: text.substring(0, 50),
                                             ariaLabel: ariaLabel,
                                             title: title,
+                                            className: className,
                                             tagName: el.tagName
                                         });
                                     }
                                 });
-                                return buttons;
+                                return elements;
                             }
                         """)
 
-                        logger.info(f"JavaScript 找到 {len(buttons_info)} 个可能的导出按钮:")
-                        for btn in buttons_info:
-                            logger.info(f"  - [{btn['index']}] {btn['tagName']}: {btn['text'][:50]}")
+                        logger.info(f"JavaScript 找到 {len(icons_info)} 个可能的下载元素:")
+                        for icon in icons_info:
+                            logger.info(f"  - [{icon['index']}] {icon['tagName']}: {icon['text']} (aria-label: {icon['ariaLabel']})")
 
-                        # 尝试点击找到的按钮
-                        for btn in buttons_info:
+                        # 尝试点击找到的元素
+                        for icon in icons_info:
                             try:
-                                logger.info(f"尝试点击按钮 [{btn['index']}]: {btn['text'][:30]}...")
-                                selector = f"[data-export-index='{btn['index']}']"
+                                logger.info(f"尝试点击元素 [{icon['index']}]...")
+                                selector = f"[data-download-index='{icon['index']}']"
                                 self.page.click(selector, timeout=5000)
-                                logger.info(f"✅ 已点击按钮: {btn['text'][:30]}")
-                                export_triggered = True
+                                logger.info(f"✅ 已点击元素: {icon['text']}")
+                                icon_clicked = True
                                 time.sleep(2)
                                 break
                             except Exception as e:
-                                logger.debug(f"点击按钮失败: {btn['text'][:30]} - {str(e)}")
+                                logger.debug(f"点击元素失败: {icon['text']} - {str(e)}")
                                 continue
                     except Exception as e:
-                        logger.error(f"JavaScript 查找失败: {e}")
+                        logger.error(f"JavaScript 搜索失败: {e}")
 
-                # 步骤5: 等待导出完成并从 Alerts 下载
+                # Step 4.2: 检测并处理对话框
+                if icon_clicked:
+                    logger.info("步骤4.2: 检测导出对话框...")
+
+                    # 保存截图查看对话框
+                    screenshot_path = os.path.join(self.download_path, "debug_after_icon_click.png")
+                    self.page.screenshot(path=screenshot_path)
+                    logger.info(f"已保存点击后截图: {screenshot_path}")
+
+                    # 查找对话框中的确认/导出/下载按钮
+                    dialog_confirm_selectors = [
+                        '[role="dialog"] button:has-text("Confirm")',
+                        '[role="dialog"] button:has-text("确认")',
+                        '[role="dialog"] button:has-text("Export")',
+                        '[role="dialog"] button:has-text("导出")',
+                        '[role="dialog"] button:has-text("Download")',
+                        '[role="dialog"] button:has-text("下载")',
+                        '[role="dialog"] button:has-text("OK")',
+                        '[role="dialog"] button[type="submit"]',
+                        # 可能不在 dialog role 中
+                        '[class*="dialog"] button:has-text("Confirm")',
+                        '[class*="modal"] button:has-text("Confirm")',
+                        '[class*="dialog"] button:has-text("Export")',
+                        '[class*="modal"] button:has-text("Export")',
+                    ]
+
+                    dialog_confirmed = False
+                    for selector in dialog_confirm_selectors:
+                        try:
+                            locator = self.page.locator(selector)
+                            if locator.count() > 0:
+                                logger.info(f"✅ 找到对话框确认按钮: {selector}")
+                                locator.first.click(timeout=5000)
+                                logger.info("✅ 已点击确认按钮")
+                                dialog_confirmed = True
+                                export_triggered = True
+                                time.sleep(2)
+                                break
+                        except Exception as e:
+                            logger.debug(f"对话框按钮选择器失败: {selector} - {str(e)}")
+                            continue
+
+                    if not dialog_confirmed:
+                        logger.warning("⚠️ 未检测到对话框确认按钮,可能直接触发了导出")
+                        export_triggered = True  # 假设已触发
+
+                # Step 4.3: 等待并检测浮动通知窗口
                 if export_triggered:
-                    logger.info("步骤5: 导出已触发,等待文件生成...")
-                    logger.info("将定期检查 Home 页面的 Alerts 区域...")
+                    logger.info("步骤4.3: 等待数据准备完成...")
+                    logger.info("将监控右上角的浮动通知窗口...")
+
+                    # 保存当前截图
+                    screenshot_path = os.path.join(self.download_path, "debug_waiting_export.png")
+                    self.page.screenshot(path=screenshot_path)
 
                     # 等待导出完成 - 最多等待 5 分钟
                     max_wait_time = 300  # 5分钟
-                    check_interval = 30  # 每30秒检查一次
+                    check_interval = 10  # 每10秒检查一次
                     elapsed_time = 0
                     download_found = False
 
@@ -542,43 +572,141 @@ class MeltwaterDownloader:
                         time.sleep(check_interval)
                         elapsed_time += check_interval
 
-                        # 访问 Home 页面检查 Alerts
-                        logger.info("检查 Home 页面 Alerts...")
-                        self.page.goto(f"{self.url}/a/home", wait_until='networkidle', timeout=60000)
-                        time.sleep(3)
-
-                        # 查找 Alerts 区域中的 CSV 下载链接
-                        alert_selectors = [
-                            'a:has-text("Your CSV file is ready")',
-                            'a:has-text("CSV")',
-                            '[class*="alert"] a:has-text("Download")',
-                            '[class*="notification"] a:has-text("Download")',
-                            'a[href*=".csv"]',
+                        # 查找右上角的浮动通知窗口
+                        floating_window_selectors = [
+                            '[class*="notification"]',
+                            '[class*="toast"]',
+                            '[class*="snackbar"]',
+                            '[class*="alert"]',
+                            '[role="alert"]',
+                            '[role="status"]',
+                            # 可能包含特定文本
+                            'div:has-text("ready")',
+                            'div:has-text("complete")',
+                            'div:has-text("已准备好")',
+                            'div:has-text("完成")',
                         ]
 
-                        for selector in alert_selectors:
+                        for selector in floating_window_selectors:
                             try:
                                 locator = self.page.locator(selector)
-                                if locator.count() > 0:
-                                    logger.info(f"✅ 在 Alerts 中找到 CSV 下载链接: {selector}")
+                                count = locator.count()
+                                if count > 0:
+                                    # 检查是否包含下载相关文本
+                                    for i in range(count):
+                                        try:
+                                            text = locator.nth(i).text_content()
+                                            if text and any(keyword in text.lower() for keyword in ['ready', 'complete', 'download', '下载', '准备好', '完成']):
+                                                logger.info(f"✅ 检测到浮动通知: {selector}")
+                                                logger.info(f"通知内容: {text}")
 
-                                    # 尝试下载
-                                    with self.page.expect_download(timeout=30000) as download_info:
-                                        locator.first.click(timeout=5000)
-                                        logger.info("✅ 已点击下载链接")
+                                                # 保存截图
+                                                screenshot_path = os.path.join(self.download_path, "debug_notification_found.png")
+                                                self.page.screenshot(path=screenshot_path)
 
-                                    download = download_info.value
-                                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                                    filename = f"meltwater_export_{timestamp}.csv"
-                                    filepath = os.path.join(self.download_path, filename)
-                                    download.save_as(filepath)
-                                    logger.info(f"✅ 文件已保存: {filepath}")
+                                                # 在通知中查找下载链接或按钮
+                                                download_selectors_in_notification = [
+                                                    f"{selector} >> nth={i} >> a",
+                                                    f"{selector} >> nth={i} >> button",
+                                                    f"{selector} >> nth={i} >> a:has-text('Download')",
+                                                    f"{selector} >> nth={i} >> button:has-text('Download')",
+                                                ]
 
-                                    download_found = True
-                                    return filepath
+                                                for dl_selector in download_selectors_in_notification:
+                                                    try:
+                                                        dl_locator = self.page.locator(dl_selector)
+                                                        if dl_locator.count() > 0:
+                                                            logger.info(f"✅ 找到下载链接: {dl_selector}")
+
+                                                            # 尝试下载
+                                                            with self.page.expect_download(timeout=30000) as download_info:
+                                                                dl_locator.first.click(timeout=5000)
+                                                                logger.info("✅ 已点击下载链接")
+
+                                                            download = download_info.value
+                                                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                                            filename = f"meltwater_export_{timestamp}.csv"
+                                                            filepath = os.path.join(self.download_path, filename)
+                                                            download.save_as(filepath)
+                                                            logger.info(f"✅ 文件已保存: {filepath}")
+
+                                                            download_found = True
+                                                            return filepath
+                                                    except Exception as e:
+                                                        logger.debug(f"通知中下载链接失败: {dl_selector} - {str(e)}")
+                                                        continue
+                                        except Exception as e:
+                                            continue
                             except Exception as e:
-                                logger.debug(f"Alert 选择器失败: {selector} - {str(e)}")
+                                logger.debug(f"浮动通知选择器失败: {selector} - {str(e)}")
                                 continue
+
+                        # 如果没找到浮动窗口,尝试点击铃铛图标查看通知中心
+                        if not download_found and elapsed_time >= 30:  # 30秒后开始尝试铃铛图标
+                            logger.info("尝试通过铃铛图标查看通知...")
+                            bell_icon_selectors = [
+                                'button[aria-label*="notification"]',
+                                'button[aria-label*="Notification"]',
+                                'button[aria-label*="alert"]',
+                                'button[aria-label*="Alert"]',
+                                '[data-testid*="notification"]',
+                                'button:has(svg[data-icon="bell"])',
+                                '[class*="notification-icon"]',
+                                '[class*="bell-icon"]',
+                            ]
+
+                            for bell_selector in bell_icon_selectors:
+                                try:
+                                    bell_locator = self.page.locator(bell_selector)
+                                    if bell_locator.count() > 0:
+                                        logger.info(f"✅ 找到铃铛图标: {bell_selector}")
+                                        bell_locator.first.click(timeout=5000)
+                                        logger.info("✅ 已点击铃铛图标")
+                                        time.sleep(2)
+
+                                        # 保存截图查看通知中心
+                                        screenshot_path = os.path.join(self.download_path, "debug_notification_center.png")
+                                        self.page.screenshot(path=screenshot_path)
+
+                                        # 在通知中心查找下载链接
+                                        notification_download_selectors = [
+                                            'a:has-text("Download")',
+                                            'a:has-text("下载")',
+                                            'a:has-text("CSV")',
+                                            'a:has-text("ready")',
+                                            'a:has-text("完成")',
+                                            'button:has-text("Download")',
+                                            'a[href*=".csv"]',
+                                        ]
+
+                                        for nd_selector in notification_download_selectors:
+                                            try:
+                                                nd_locator = self.page.locator(nd_selector)
+                                                if nd_locator.count() > 0:
+                                                    logger.info(f"✅ 在通知中心找到下载链接: {nd_selector}")
+
+                                                    # 尝试下载
+                                                    with self.page.expect_download(timeout=30000) as download_info:
+                                                        nd_locator.first.click(timeout=5000)
+                                                        logger.info("✅ 已点击下载链接")
+
+                                                    download = download_info.value
+                                                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                                    filename = f"meltwater_export_{timestamp}.csv"
+                                                    filepath = os.path.join(self.download_path, filename)
+                                                    download.save_as(filepath)
+                                                    logger.info(f"✅ 文件已保存: {filepath}")
+
+                                                    download_found = True
+                                                    return filepath
+                                            except Exception as e:
+                                                logger.debug(f"通知中心下载链接失败: {nd_selector} - {str(e)}")
+                                                continue
+
+                                        break  # 只点击一次铃铛图标
+                                except Exception as e:
+                                    logger.debug(f"铃铛图标选择器失败: {bell_selector} - {str(e)}")
+                                    continue
 
                         if not download_found:
                             logger.info(f"⏳ 文件尚未就绪,{check_interval}秒后再次检查...")
@@ -591,7 +719,7 @@ class MeltwaterDownloader:
                         raise Exception("导出文件生成超时")
                 else:
                     logger.error("❌ 未能触发导出请求")
-                    screenshot_path = os.path.join(self.download_path, "error_no_export_button.png")
+                    screenshot_path = os.path.join(self.download_path, "error_no_download_icon.png")
                     self.page.screenshot(path=screenshot_path, full_page=True)
                     logger.info(f"已保存错误截图: {screenshot_path}")
 

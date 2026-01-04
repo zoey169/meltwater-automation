@@ -1,0 +1,21 @@
+<string>:4: SyntaxWarning: invalid escape sequence '\!'
+================================================================================
+监控视图页面 DOM 结构分析
+================================================================================
+
+步骤1: 登录...
+等待登录完成...
+
+❌ 出错: Timeout 60000ms exceeded.
+=========================== logs ===========================
+waiting for navigation to "**/app/**" until 'load'
+  navigated to "https://authorize.meltwater.com/u/passkey-enrollment?state=hKFo2SAyLTVlcElmTTNKWFpaWWZEazNzbVFvajZKUWE5Nl91a6FurnBhc3NrZXktZW5yb2xso3RpZNkgUWxDZE52TG55dE1pVW1NOTZKVFNJS3U3YnMxOEhjVGWjY2lk2SBzeTZzUUYyekpaV0pkMWpxdXBBUnBSdVVJRWw5eHlINg"
+  navigated to "https://app.meltwater.com/sso-callback?code=9edHW1iYMfQ4-Y1U29PLLSMyEAwk7YRlv3xpVKkpIcHih&state=MWJzMVhNTWZaRVVkMU54OWd4NWFDZWRSRjBKbnRKZjBvSWlSbmhqOF96dA%3D%3D"
+  navigated to "https://app.meltwater.com/a/home"
+  navigated to "https://app.meltwater.com/a/home"
+  navigated to "https://app.meltwater.com/a/content"
+  navigated to "https://app.meltwater.com/a/tag/list"
+  navigated to "https://app.meltwater.com/a/monitor/view?searches=2062364&type=tag"
+  navigated to "https://app.meltwater.com/a/monitor/view?searches=2062364&type=tag"
+============================================================
+已保存错误截图

@@ -1,0 +1,15 @@
+2026-01-04 15:37:43,475 - INFO - ==================================================
+2026-01-04 15:37:43,475 - INFO - Meltwater 自动下载开始(会话复用模式)
+2026-01-04 15:37:43,475 - INFO - ==================================================
+2026-01-04 15:37:43,475 - INFO - 启动浏览器(使用持久化会话)...
+2026-01-04 15:37:45,476 - INFO - 浏览器启动成功
+2026-01-04 15:37:45,476 - INFO - 检查登录状态...
+2026-01-04 15:37:52,576 - INFO - 已保存页面截图: ./downloads/session_check.png
+2026-01-04 15:37:52,578 - WARNING - ⚠️  检测到登录页面,需要手动登录
+2026-01-04 15:37:52,578 - INFO - 请在打开的浏览器窗口中手动登录...
+2026-01-04 15:37:52,579 - INFO - 等待登录完成... (最长等待 180 秒)
+2026-01-04 15:37:55,655 - ERROR - ❌ 下载失败: Page.content: Unable to retrieve content because the page is navigating and changing the content.
+2026-01-04 15:37:57,050 - INFO - 已保存错误截图: ./downloads/error_screenshot.png
+2026-01-04 15:37:57,050 - INFO - 关闭浏览器...
+2026-01-04 15:37:57,365 - INFO - 浏览器已关闭
+2026-01-04 15:37:57,365 - ERROR - ❌ 程序执行失败: Page.content: Unable to retrieve content because the page is navigating and changing the content.
