@@ -139,7 +139,19 @@ class MeltwaterDownloader:
         logger.info("第二步: 输入密码...")
         password_selector = 'input[type="password"], input[name="password"], input[id="password"]'
         self.page.wait_for_selector(password_selector, timeout=30000)
-        self.page.fill(password_selector, self.password)
+
+        # 先清空密码框,然后使用 type() 逐字符输入(处理特殊字符)
+        self.page.click(password_selector)
+        self.page.fill(password_selector, '')  # 清空
+        self.page.type(password_selector, self.password, delay=50)  # 逐字符输入,每个字符延迟50ms
+
+        # 保存密码填写后的截图
+        try:
+            screenshot_path = os.path.join(self.download_path, "debug_step4_password_filled.png")
+            self.page.screenshot(path=screenshot_path)
+            logger.info(f"已保存密码填写后截图: {screenshot_path}")
+        except:
+            pass
 
         # 点击登录按钮
         logger.info("点击登录按钮...")
