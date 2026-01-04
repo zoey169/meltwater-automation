@@ -1,0 +1,67 @@
+name: Meltwater Data Import
+
+on:
+  # 定时触发: 每天早上 9:00 (UTC+8 = 北京时间 9:00 对应 UTC 1:00)
+  schedule:
+    - cron: '0 1 * * *'  # 每天 UTC 1:00 = 北京时间 9:00
+
+  # 允许手动触发
+  workflow_dispatch:
+    inputs:
+      csv_url:
+        description: 'CSV 文件 URL (可选,如果不提供则使用默认路径)'
+        required: false
+        type: string
+
+jobs:
+  import-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Download CSV file
+        run: |
+          # 如果手动触发时提供了 CSV URL,则下载
+          if [ -n "${{ github.event.inputs.csv_url }}" ]; then
+            echo "从 URL 下载 CSV 文件: ${{ github.event.inputs.csv_url }}"
+            curl -L -o meltwater_export.csv "${{ github.event.inputs.csv_url }}"
+          else
+            echo "⚠️ 未提供 CSV 文件"
+            echo "请通过以下方式之一提供 CSV 文件:"
+            echo "1. 手动触发工作流时提供 csv_url 参数"
+            echo "2. 配置自动下载逻辑"
+            echo "3. 将 CSV 文件作为 artifact 上传"
+            exit 1
+          fi
+
+      - name: Run import script
+        env:
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          BITABLE_APP_TOKEN: ${{ secrets.BITABLE_APP_TOKEN }}
+          BITABLE_TABLE_ID: ${{ secrets.BITABLE_TABLE_ID }}
+          TARGET_CHAT_ID: ${{ secrets.TARGET_CHAT_ID }}
+          NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+          CSV_FILE_PATH: ./meltwater_export.csv
+        run: |
+          python meltwater_auto_import.py
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: import-logs
+          path: |
+            *.log
+          retention-days: 30
