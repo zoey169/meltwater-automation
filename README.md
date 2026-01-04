@@ -14,28 +14,79 @@
 
 ## 📋 系统要求
 
+### 本地运行
 - Python 3.7+
-- macOS (用于 launchd 定时任务)
+- macOS/Linux/Windows
+
+### GitHub Actions 云端运行 (推荐)
+- GitHub 账号
+- 配置 GitHub Secrets
+- CSV 文件上传到可访问的 URL
+
+### 飞书权限
 - 飞书开放平台应用权限:
   - `bitable:app` - 多维表格读写
   - `im:message` - 发送消息
 
 ## 🚀 快速开始
 
-### 1. 克隆仓库
+### 方式一: GitHub Actions 云端运行 (推荐)
+
+#### 1. Fork 或 Clone 本仓库到你的 GitHub 账号
+
+#### 2. 配置 GitHub Secrets
+
+运行配置脚本(需要先安装 [GitHub CLI](https://cli.github.com/)):
+
+```bash
+./setup_github_secrets.sh
+```
+
+或者手动在 GitHub 仓库设置中添加以下 Secrets:
+- `FEISHU_APP_ID` - 飞书应用 ID
+- `FEISHU_APP_SECRET` - 飞书应用密钥
+- `BITABLE_APP_TOKEN` - 多维表格 App Token
+- `BITABLE_TABLE_ID` - 多维表格 Table ID
+- `TARGET_CHAT_ID` - 飞书群聊 ID
+- `NOTIFICATION_EMAIL` - 通知邮箱
+
+#### 3. 准备 CSV 文件
+
+将 CSV 文件上传到可访问的 URL,详见 [CSV_UPLOAD_GUIDE.md](CSV_UPLOAD_GUIDE.md)
+
+#### 4. 手动触发工作流
+
+在 GitHub 仓库页面:
+1. 点击 **Actions** 标签
+2. 选择 **Meltwater Data Import** 工作流
+3. 点击 **Run workflow**
+4. 输入 CSV 文件的 URL
+5. 点击 **Run workflow** 开始执行
+
+#### 5. 自动定时执行
+
+工作流会在每天早上 9:00 (北京时间) 自动运行。
+
+**注意**: 自动运行需要提供固定的 CSV URL 或修改工作流配置。
+
+---
+
+### 方式二: 本地运行
+
+#### 1. 克隆仓库
 
 ```bash
 git clone https://github.com/zoey169/meltwater-automation.git
 cd meltwater-automation
 ```
 
-### 2. 安装依赖
+#### 2. 安装依赖
 
 ```bash
 pip3 install -r requirements.txt
 ```
 
-### 3. 配置环境变量
+#### 3. 配置环境变量
 
 复制 `.env.example` 为 `.env` 并填写配置:
 
@@ -68,7 +119,7 @@ CSV_FILE_PATH=/path/to/meltwater/export.csv
 - **多维表格 Token**: 从表格 URL 获取,格式为 `https://xxx.feishu.cn/base/{APP_TOKEN}?table={TABLE_ID}`
 - **群聊 ID**: 在飞书群聊中,点击群设置 → 群机器人 → 添加机器人后获取
 
-### 4. 手动测试运行
+#### 4. 手动测试运行
 
 ```bash
 python3 meltwater_auto_import.py
@@ -80,7 +131,11 @@ python3 meltwater_auto_import.py
 - 批量写入新记录到飞书表格
 - 发送通知到群聊和邮箱
 
-## ⚙️ 设置定时任务 (macOS)
+---
+
+## ⚙️ 设置本地定时任务 (macOS)
+
+**注意**: 如果已使用 GitHub Actions,无需配置本地定时任务。
 
 ### 创建 LaunchAgent 配置
 
@@ -261,26 +316,41 @@ python3 manage_meltwater_schedule.py increment
 
 ```
 meltwater-automation/
-├── meltwater_auto_import.py       # 主导入脚本
-├── manage_meltwater_schedule.py   # 调度管理脚本
+├── .github/
+│   └── workflows/
+│       └── meltwater-import.yml    # GitHub Actions 工作流配置
+├── meltwater_auto_import.py        # 主导入脚本
+├── manage_meltwater_schedule.py    # 调度管理脚本(本地使用)
+├── setup_github_secrets.sh         # GitHub Secrets 配置脚本
 ├── requirements.txt                # Python 依赖
 ├── .env.example                    # 环境变量模板
 ├── .gitignore                      # Git 忽略规则
+├── CSV_UPLOAD_GUIDE.md            # CSV 文件上传指南
+├── com.meltwater.import.plist.example  # macOS 定时任务示例
 └── README.md                       # 本文档
 ```
 
 ## 🔐 安全说明
 
-- 所有敏感信息通过环境变量配置
+- 所有敏感信息通过环境变量或 GitHub Secrets 配置
 - `.env` 文件已加入 `.gitignore`,不会提交到版本库
+- GitHub Secrets 加密存储,不会在日志中显示
 - 建议定期更换飞书应用凭证
-- 仅在受信任的环境中部署
+- CSV 文件不会提交到仓库(已加入 `.gitignore`)
 
 ## 📅 更新日志
 
 ### 2026-01-04
-- ✨ 初始版本发布
-- ✅ 实现 CSV 自动导入功能
+
+#### v1.1 - GitHub Actions 支持
+- ✨ 添加 GitHub Actions 云端定时执行
+- ✅ 支持手动触发和定时触发
+- ✅ GitHub Secrets 自动配置脚本
+- ✅ CSV 文件 URL 下载支持
+- 📝 完善文档和使用指南
+
+#### v1.0 - 初始版本
+- ✨ 实现 CSV 自动导入功能
 - ✅ 添加智能重复检测
 - ✅ 实现定时任务调度
 - ✅ 支持自动频率切换
