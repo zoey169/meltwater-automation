@@ -368,16 +368,39 @@ class MeltwaterDownloader:
                 return filepath
 
             else:
-                # 如果 Alerts 没有现成文件,先主动发起导出请求
-                logger.warning("Alerts 区域没有找到 ANZ Coverage 文件,主动发起导出请求...")
+                # 如果 Alerts 没有现成文件,需要点击 ANZ Coverage 2025 链接进入其页面
+                logger.warning("Alerts 区域没有找到 ANZ Coverage 文件,点击进入 ANZ Coverage 2025 页面...")
 
-                # 直接导航到监控视图 (使用用户提供的直达URL,避免在 Tags 页面查找标签)
-                monitor_url = "https://app.meltwater.com/a/monitor/view?searches=2062364&type=tag"
-                logger.info(f"直接访问监控视图: {monitor_url}")
-                self.page.goto(monitor_url, wait_until='load', timeout=60000)
+                # 步骤1: 在 Home 页面找到 ANZ Coverage 2025 链接并点击
+                logger.info("步骤1: 查找并点击 ANZ Coverage 2025 链接...")
+                anz_coverage_selectors = [
+                    'a:has-text("ANZ Coverage 2025")',
+                    'text=ANZ Coverage 2025',
+                    '[href*="2062364"]',  # 使用 search ID
+                ]
 
-                # 等待页面完全加载 - GitHub Actions 环境可能需要更长时间
-                logger.info("等待页面完全加载...")
+                anz_clicked = False
+                for selector in anz_coverage_selectors:
+                    try:
+                        locator = self.page.locator(selector)
+                        if locator.count() > 0:
+                            logger.info(f"✅ 找到 ANZ Coverage 2025 链接: {selector}")
+                            locator.first.click(timeout=10000)
+                            logger.info(f"✅ 已点击链接")
+                            anz_clicked = True
+                            break
+                    except Exception as e:
+                        logger.debug(f"链接选择器失败: {selector} - {str(e)}")
+                        continue
+
+                if not anz_clicked:
+                    logger.error("❌ 未找到 ANZ Coverage 2025 链接")
+                    screenshot_path = os.path.join(self.download_path, "error_no_anz_link.png")
+                    self.page.screenshot(path=screenshot_path)
+                    raise Exception("未找到 ANZ Coverage 2025 链接")
+
+                # 等待页面完全加载
+                logger.info("等待 ANZ Coverage 页面加载...")
                 time.sleep(5)
 
                 # 等待网络空闲
@@ -392,39 +415,47 @@ class MeltwaterDownloader:
                 time.sleep(10)
 
                 # 保存截图
-                screenshot_path = os.path.join(self.download_path, "debug_monitor_view.png")
+                screenshot_path = os.path.join(self.download_path, "debug_anz_coverage_page.png")
                 self.page.screenshot(path=screenshot_path)
-                logger.info(f"已保存监控视图截图: {screenshot_path}")
+                logger.info(f"已保存 ANZ Coverage 页面截图: {screenshot_path}")
 
-                # 在监控视图页面触发导出
-                logger.info("步骤4: 触发导出请求...")
+                # 在 ANZ Coverage 页面触发导出
+                logger.info("步骤2: 在 ANZ Coverage 页面触发导出...")
 
-                # 实际的 UI 流程:
-                # 1. 点击下载图标
+                # 实际的 UI 流程 (在 ANZ Coverage 2025 页面):
+                # 1. 查找并点击下载图标 (xxx results 右边,魔法棒旁边,向下箭头 + 横线)
                 # 2. 等待对话框出现
                 # 3. 点击对话框中的确认按钮 (使用默认选项)
-                # 4. 等待数据准备
+                # 4. 等待数据准备完成
                 # 5. 检测右上角的浮动通知窗口
                 # 6. 点击浮动窗口下载,或者从铃铛图标的通知中心下载
 
                 export_triggered = False
 
-                # Step 4.1: 查找并点击下载图标
-                logger.info("步骤4.1: 查找下载图标...")
+                # Step 2.1: 查找下载按钮
+                # 用户描述: xxx results 的右边,魔法棒旁边,向下箭头 + 横线
+                logger.info("步骤2.1: 查找下载按钮(向下箭头图标)...")
                 download_icon_selectors = [
+                    # 直接查找下载图标 - 向下箭头
                     'button[aria-label*="Download"]',
-                    'button[aria-label*="download"]',
                     'button[title*="Download"]',
+                    'button[aria-label*="download"]',
                     'button[title*="download"]',
-                    '[data-testid*="download"]',
-                    'svg[data-icon="download"]',  # SVG icon
+
+                    # SVG 图标相关
+                    'svg[data-icon="download"]',
                     'button:has(svg[data-icon="download"])',
-                    # 可能是一个带图标的按钮
+
+                    # 可能包含下载类名的按钮
                     'button:has([class*="download"])',
                     'button:has([class*="Download"])',
-                    # 或者直接是图标元素
                     '[class*="download-icon"]',
                     '[class*="downloadIcon"]',
+                    '[data-testid*="download"]',
+
+                    # 尝试通过 results 文本附近查找
+                    'text=/.*results.*/ >> .. >> button',
+                    'text=/.*results.*/ >> xpath=.. >> button',
                 ]
 
                 icon_clicked = False
@@ -506,9 +537,9 @@ class MeltwaterDownloader:
                     except Exception as e:
                         logger.error(f"JavaScript 搜索失败: {e}")
 
-                # Step 4.2: 检测并处理对话框
+                # Step 2.2: 检测并处理对话框
                 if icon_clicked:
-                    logger.info("步骤4.2: 检测导出对话框...")
+                    logger.info("步骤2.2: 检测导出对话框...")
 
                     # 保存截图查看对话框
                     screenshot_path = os.path.join(self.download_path, "debug_after_icon_click.png")
@@ -552,9 +583,9 @@ class MeltwaterDownloader:
                         logger.warning("⚠️ 未检测到对话框确认按钮,可能直接触发了导出")
                         export_triggered = True  # 假设已触发
 
-                # Step 4.3: 等待并检测浮动通知窗口
+                # Step 2.3: 等待并检测浮动通知窗口
                 if export_triggered:
-                    logger.info("步骤4.3: 等待数据准备完成...")
+                    logger.info("步骤2.3: 等待数据准备完成...")
                     logger.info("将监控右上角的浮动通知窗口...")
 
                     # 保存当前截图
