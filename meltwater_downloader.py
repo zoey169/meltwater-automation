@@ -64,7 +64,7 @@ class MeltwaterDownloader:
         logger.info("浏览器启动成功")
 
     def login(self):
-        """登录 Meltwater (两步登录流程)"""
+        """登录 Meltwater (包含 Solution 选择和两步登录)"""
         logger.info(f"访问 Meltwater: {self.url}")
         self.page.goto(self.url, wait_until='networkidle', timeout=60000)
 
@@ -73,9 +73,38 @@ class MeltwaterDownloader:
 
         # 保存初始页面截图用于调试
         try:
-            screenshot_path = os.path.join(self.download_path, "debug_step1_initial.png")
+            screenshot_path = os.path.join(self.download_path, "debug_step0_initial.png")
             self.page.screenshot(path=screenshot_path)
             logger.info(f"已保存初始页面截图: {screenshot_path}")
+        except:
+            pass
+
+        # 步骤0: 选择 Solution - "Social & Media Intelligence"
+        logger.info("步骤0: 尝试选择 Solution...")
+        solution_selectors = [
+            'text=Social & Media Intelligence',
+            'button:has-text("Social & Media Intelligence")',
+            'a:has-text("Social & Media Intelligence")',
+            '[data-testid*="social"]',
+        ]
+
+        for selector in solution_selectors:
+            try:
+                if self.page.locator(selector).count() > 0:
+                    self.page.click(selector, timeout=5000)
+                    logger.info(f"✅ 已选择 Solution: {selector}")
+                    time.sleep(2)
+                    break
+            except:
+                continue
+        else:
+            logger.info("未找到 Solution 选择,可能已在正确页面,继续...")
+
+        # 保存选择 Solution 后的截图
+        try:
+            screenshot_path = os.path.join(self.download_path, "debug_step0.5_after_solution.png")
+            self.page.screenshot(path=screenshot_path)
+            logger.info(f"已保存选择Solution后截图: {screenshot_path}")
         except:
             pass
 
@@ -164,6 +193,38 @@ class MeltwaterDownloader:
             # 等待仪表板或主页元素出现
             self.page.wait_for_load_state('networkidle', timeout=60000)
             time.sleep(5)
+
+            # 处理"保存密码"弹窗
+            logger.info("检查是否有保存密码弹窗...")
+            save_password_buttons = [
+                'button:has-text("Not now")',
+                'button:has-text("No thanks")',
+                'button:has-text("Skip")',
+                'button:has-text("Later")',
+                'button:has-text("取消")',
+                'button:has-text("稍后")',
+                '[data-testid*="dismiss"]',
+                '[data-testid*="skip"]',
+            ]
+
+            for selector in save_password_buttons:
+                try:
+                    if self.page.locator(selector).count() > 0:
+                        self.page.click(selector, timeout=3000)
+                        logger.info(f"✅ 已关闭保存密码弹窗: {selector}")
+                        time.sleep(2)
+                        break
+                except:
+                    continue
+
+            # 保存登录后的截图
+            try:
+                screenshot_path = os.path.join(self.download_path, "debug_step5_after_login.png")
+                self.page.screenshot(path=screenshot_path)
+                logger.info(f"已保存登录后截图: {screenshot_path}")
+            except:
+                pass
+
             logger.info("登录成功!")
         except PlaywrightTimeout:
             logger.error("登录超时,可能需要验证码或凭证错误")
