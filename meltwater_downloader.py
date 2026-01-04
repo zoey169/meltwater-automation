@@ -64,25 +64,53 @@ class MeltwaterDownloader:
         logger.info("浏览器启动成功")
 
     def login(self):
-        """登录 Meltwater"""
+        """登录 Meltwater (两步登录流程)"""
         logger.info(f"访问 Meltwater: {self.url}")
         self.page.goto(self.url, wait_until='networkidle', timeout=60000)
 
         # 等待登录页面加载
         time.sleep(3)
 
-        # 输入邮箱
-        logger.info("输入登录凭证...")
+        # 第一步: 输入邮箱
+        logger.info("第一步: 输入邮箱...")
         email_selector = 'input[type="email"], input[name="email"], input[id="email"]'
         self.page.wait_for_selector(email_selector, timeout=30000)
         self.page.fill(email_selector, self.email)
 
-        # 输入密码
+        # 查找并点击 Next/Continue 按钮
+        logger.info("点击 Next 按钮...")
+        next_button_selectors = [
+            'button:has-text("Next")',
+            'button:has-text("Continue")',
+            'button[type="submit"]',
+            'input[type="submit"]'
+        ]
+
+        next_clicked = False
+        for selector in next_button_selectors:
+            try:
+                if self.page.locator(selector).count() > 0:
+                    self.page.click(selector)
+                    logger.info(f"已点击 Next 按钮: {selector}")
+                    next_clicked = True
+                    break
+            except:
+                continue
+
+        if not next_clicked:
+            logger.warning("未找到 Next 按钮,可能是单页登录,继续...")
+
+        # 等待页面跳转
+        time.sleep(3)
+
+        # 第二步: 输入密码
+        logger.info("第二步: 输入密码...")
         password_selector = 'input[type="password"], input[name="password"], input[id="password"]'
         self.page.wait_for_selector(password_selector, timeout=30000)
         self.page.fill(password_selector, self.password)
 
         # 点击登录按钮
+        logger.info("点击登录按钮...")
         login_button_selector = 'button[type="submit"], button:has-text("Sign In"), button:has-text("Log In")'
         self.page.click(login_button_selector)
 
