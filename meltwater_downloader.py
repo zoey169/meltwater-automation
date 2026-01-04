@@ -373,30 +373,60 @@ class MeltwaterDownloader:
 
                 # 步骤1: 在 Home 页面找到 ANZ Coverage 2025 链接并点击
                 logger.info("步骤1: 查找并点击 ANZ Coverage 2025 链接...")
+
+                # 先保存截图,看看 Home 页面上有什么
+                debug_screenshot = os.path.join(self.download_path, "debug_before_link_search.png")
+                self.page.screenshot(path=debug_screenshot, full_page=True)
+                logger.info(f"已保存搜索前完整页面截图: {debug_screenshot}")
+
+                # 使用 JavaScript 列出页面上所有的链接文本和 href
+                logger.info("获取页面上所有链接...")
+                try:
+                    all_links = self.page.evaluate("""() => {
+                        const links = Array.from(document.querySelectorAll('a'));
+                        return links.map(link => ({
+                            text: link.textContent.trim().substring(0, 100),
+                            href: link.href,
+                            visible: link.offsetParent !== null
+                        })).filter(link => link.text.length > 0);
+                    }""")
+                    logger.info(f"找到 {len(all_links)} 个链接:")
+                    for i, link in enumerate(all_links[:20]):  # 只显示前20个
+                        logger.info(f"  链接 {i+1}: text='{link['text'][:50]}' href='{link['href'][:80]}' visible={link['visible']}")
+                    if len(all_links) > 20:
+                        logger.info(f"  ... 还有 {len(all_links) - 20} 个链接")
+                except Exception as e:
+                    logger.warning(f"无法获取链接列表: {e}")
+
                 anz_coverage_selectors = [
                     'a:has-text("ANZ Coverage 2025")',
                     'text=ANZ Coverage 2025',
                     '[href*="2062364"]',  # 使用 search ID
+                    'a:has-text("ANZ Coverage")',  # 不带年份的版本
+                    'text=ANZ Coverage',  # 更宽松的匹配
+                    '[href*="monitor"]',  # 任何监控相关的链接
                 ]
 
                 anz_clicked = False
                 for selector in anz_coverage_selectors:
                     try:
                         locator = self.page.locator(selector)
-                        if locator.count() > 0:
+                        count = locator.count()
+                        logger.info(f"尝试选择器: {selector}, 找到 {count} 个元素")
+                        if count > 0:
                             logger.info(f"✅ 找到 ANZ Coverage 2025 链接: {selector}")
                             locator.first.click(timeout=10000)
                             logger.info(f"✅ 已点击链接")
                             anz_clicked = True
                             break
                     except Exception as e:
-                        logger.debug(f"链接选择器失败: {selector} - {str(e)}")
+                        logger.warning(f"链接选择器失败: {selector} - {str(e)}")
                         continue
 
                 if not anz_clicked:
                     logger.error("❌ 未找到 ANZ Coverage 2025 链接")
                     screenshot_path = os.path.join(self.download_path, "error_no_anz_link.png")
-                    self.page.screenshot(path=screenshot_path)
+                    self.page.screenshot(path=screenshot_path, full_page=True)
                     raise Exception("未找到 ANZ Coverage 2025 链接")
 
                 # 等待页面完全加载
@@ -466,7 +496,9 @@ class MeltwaterDownloader:
                         if count > 0:
                             logger.info(f"✅ 找到 {count} 个下载图标元素: {selector}")
                             # 保存截图查看图标位置
-                            screenshot_path = os.path.join(self.download_path, f"debug_found_icon_{selector.replace(':', '_').replace('[', '').replace(']', '')[:30]}.png")
+                            # 清理文件名中的特殊字符
+                            safe_selector = selector.replace(':', '_').replace('[', '').replace(']', '').replace('*', '_').replace('"', '').replace('?', '').replace('<', '').replace('>', '').replace('|', '').replace('/', '_')[:30]
+                            screenshot_path = os.path.join(self.download_path, f"debug_found_icon_{safe_selector}.png")
                             self.page.screenshot(path=screenshot_path)
 
                             # 尝试点击第一个
