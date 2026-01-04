@@ -368,8 +368,8 @@ class MeltwaterDownloader:
                 return filepath
 
             else:
-                # 如果 Alerts 没有现成文件,直接访问监控视图
-                logger.warning("Alerts 区域没有找到 ANZ Coverage 文件,直接访问监控视图...")
+                # 如果 Alerts 没有现成文件,先主动发起导出请求
+                logger.warning("Alerts 区域没有找到 ANZ Coverage 文件,主动发起导出请求...")
 
                 # 直接导航到监控视图 (使用用户提供的直达URL,避免在 Tags 页面查找标签)
                 monitor_url = "https://app.meltwater.com/a/monitor/view?searches=2062364&type=tag"
@@ -397,145 +397,201 @@ class MeltwaterDownloader:
                 logger.info(f"已保存监控视图截图: {screenshot_path}")
 
                 # 在监控视图页面找到并点击下载按钮
-                logger.info("步骤4: 在监控视图中找到下载按钮...")
+                logger.info("步骤4: 触发导出请求...")
 
-                # 策略1: 尝试使用 JavaScript 查找所有可能的下载按钮
-                logger.info("策略1: 使用 JavaScript 查找下载按钮...")
-                try:
-                    # 使用 JavaScript 获取所有可能的下载按钮信息
-                    buttons_info = self.page.evaluate("""
-                        () => {
-                            const buttons = [];
+                # 新策略: 先触发导出请求,而不是查找现有的下载按钮
+                # 因为 GitHub Actions 环境是全新的,没有预先存在的导出文件
 
-                            // 查找所有按钮和链接
-                            document.querySelectorAll('button, a, [role="button"]').forEach((el, index) => {
-                                const text = el.textContent?.trim() || '';
-                                const ariaLabel = el.getAttribute('aria-label') || '';
-                                const title = el.getAttribute('title') || '';
-                                const className = el.className || '';
-                                const href = el.getAttribute('href') || '';
+                # 查找并点击 Export/导出 按钮来触发新的导出请求
+                export_triggered = False
+                export_selectors = [
+                    'button:has-text("Export")',
+                    'button:has-text("导出")',
+                    'a:has-text("Export")',
+                    'a:has-text("导出")',
+                    '[aria-label*="Export"]',
+                    '[aria-label*="导出"]',
+                    'button:has-text("Download")',
+                    'button:has-text("下载")',
+                    # 可能需要先打开菜单
+                    'button[aria-label="Actions"]',
+                    'button[aria-label="More options"]',
+                    'button:has-text("Actions")',
+                    'button:has-text("More")',
+                ]
 
-                                // 判断是否可能是下载按钮
-                                const keywords = ['download', 'export', 'csv', 'save'];
-                                const isDownloadButton = keywords.some(keyword =>
-                                    text.toLowerCase().includes(keyword) ||
-                                    ariaLabel.toLowerCase().includes(keyword) ||
-                                    title.toLowerCase().includes(keyword) ||
-                                    className.toLowerCase().includes(keyword) ||
-                                    href.toLowerCase().includes(keyword)
-                                );
+                logger.info("尝试找到 Export 按钮...")
+                for selector in export_selectors:
+                    try:
+                        locator = self.page.locator(selector)
+                        if locator.count() > 0:
+                            logger.info(f"✅ 找到可能的导出按钮: {selector}")
+                            locator.first.click(timeout=5000)
+                            logger.info(f"✅ 已点击按钮: {selector}")
+                            time.sleep(2)  # 等待响应
 
-                                if (isDownloadButton) {
-                                    el.setAttribute('data-download-index', index.toString());
-                                    buttons.push({
-                                        index: index,
-                                        text: text,
-                                        ariaLabel: ariaLabel,
-                                        title: title,
-                                        className: className,
-                                        href: href,
-                                        tagName: el.tagName
-                                    });
-                                }
-                            });
+                            # 保存点击后的截图
+                            screenshot_path = os.path.join(self.download_path, f"debug_after_click_{selector.replace(':', '_').replace('[', '').replace(']', '')[:30]}.png")
+                            self.page.screenshot(path=screenshot_path)
 
-                            return buttons;
-                        }
-                    """)
+                            # 检查是否打开了菜单或对话框
+                            # 如果是菜单按钮,继续查找导出选项
+                            if "Action" in selector or "More" in selector or "menu" in selector.lower():
+                                logger.info("可能打开了菜单,继续查找导出选项...")
+                                time.sleep(1)
 
-                    logger.info(f"JavaScript 找到 {len(buttons_info)} 个可能的下载按钮:")
-                    for btn in buttons_info:
-                        logger.info(f"  - [{btn['index']}] {btn['tagName']}: {btn['text'][:50]} (aria-label: {btn['ariaLabel']}, href: {btn['href'][:50] if btn['href'] else 'N/A'})")
+                                # 在菜单中查找导出选项
+                                menu_export_selectors = [
+                                    'button:has-text("Export")',
+                                    'a:has-text("Export")',
+                                    '[role="menuitem"]:has-text("Export")',
+                                    'li:has-text("Export")',
+                                ]
 
-                    # 尝试点击找到的按钮
-                    download_found = False
-                    for btn in buttons_info:
-                        try:
-                            logger.info(f"尝试点击按钮 [{btn['index']}]: {btn['text'][:30]}...")
-                            selector = f"[data-download-index='{btn['index']}']"
+                                for menu_selector in menu_export_selectors:
+                                    try:
+                                        menu_locator = self.page.locator(menu_selector)
+                                        if menu_locator.count() > 0:
+                                            logger.info(f"✅ 在菜单中找到导出选项: {menu_selector}")
+                                            menu_locator.first.click(timeout=5000)
+                                            logger.info("✅ 已点击导出选项")
+                                            export_triggered = True
+                                            time.sleep(2)
+                                            break
+                                    except Exception as e:
+                                        logger.debug(f"菜单导出选项失败: {menu_selector} - {str(e)}")
+                                        continue
+                            else:
+                                export_triggered = True
 
-                            with self.page.expect_download(timeout=30000) as download_info:
+                            if export_triggered:
+                                break
+                    except Exception as e:
+                        logger.debug(f"导出按钮选择器失败: {selector} - {str(e)}")
+                        continue
+
+                if not export_triggered:
+                    logger.warning("⚠️ 未能触发导出请求,尝试备用方案...")
+
+                    # 备用方案: 使用 JavaScript 查找所有可能的导出按钮
+                    logger.info("使用 JavaScript 查找导出按钮...")
+                    try:
+                        buttons_info = self.page.evaluate("""
+                            () => {
+                                const buttons = [];
+                                document.querySelectorAll('button, a, [role="button"], [role="menuitem"]').forEach((el, index) => {
+                                    const text = el.textContent?.trim() || '';
+                                    const ariaLabel = el.getAttribute('aria-label') || '';
+                                    const title = el.getAttribute('title') || '';
+
+                                    const keywords = ['export', 'download', '导出', '下载'];
+                                    const hasKeyword = keywords.some(keyword =>
+                                        text.toLowerCase().includes(keyword.toLowerCase()) ||
+                                        ariaLabel.toLowerCase().includes(keyword.toLowerCase()) ||
+                                        title.toLowerCase().includes(keyword.toLowerCase())
+                                    );
+
+                                    if (hasKeyword) {
+                                        el.setAttribute('data-export-index', index.toString());
+                                        buttons.push({
+                                            index: index,
+                                            text: text,
+                                            ariaLabel: ariaLabel,
+                                            title: title,
+                                            tagName: el.tagName
+                                        });
+                                    }
+                                });
+                                return buttons;
+                            }
+                        """)
+
+                        logger.info(f"JavaScript 找到 {len(buttons_info)} 个可能的导出按钮:")
+                        for btn in buttons_info:
+                            logger.info(f"  - [{btn['index']}] {btn['tagName']}: {btn['text'][:50]}")
+
+                        # 尝试点击找到的按钮
+                        for btn in buttons_info:
+                            try:
+                                logger.info(f"尝试点击按钮 [{btn['index']}]: {btn['text'][:30]}...")
+                                selector = f"[data-export-index='{btn['index']}']"
                                 self.page.click(selector, timeout=5000)
-                                logger.info(f"✅ 已点击下载按钮: {btn['text'][:30]}")
+                                logger.info(f"✅ 已点击按钮: {btn['text'][:30]}")
+                                export_triggered = True
+                                time.sleep(2)
+                                break
+                            except Exception as e:
+                                logger.debug(f"点击按钮失败: {btn['text'][:30]} - {str(e)}")
+                                continue
+                    except Exception as e:
+                        logger.error(f"JavaScript 查找失败: {e}")
 
-                            download = download_info.value
-                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                            filename = f"meltwater_export_{timestamp}.csv"
-                            filepath = os.path.join(self.download_path, filename)
-                            download.save_as(filepath)
-                            logger.info(f"✅ 文件已保存: {filepath}")
+                # 步骤5: 等待导出完成并从 Alerts 下载
+                if export_triggered:
+                    logger.info("步骤5: 导出已触发,等待文件生成...")
+                    logger.info("将定期检查 Home 页面的 Alerts 区域...")
 
-                            download_found = True
-                            return filepath
-
-                        except Exception as e:
-                            logger.debug(f"点击按钮 [{btn['index']}] 失败: {str(e)}")
-                            continue
-
-                except Exception as e:
-                    logger.warning(f"JavaScript 策略失败: {str(e)}")
+                    # 等待导出完成 - 最多等待 5 分钟
+                    max_wait_time = 300  # 5分钟
+                    check_interval = 30  # 每30秒检查一次
+                    elapsed_time = 0
                     download_found = False
 
-                # 策略2: 使用传统选择器(fallback)
-                if not download_found:
-                    logger.info("策略2: 使用传统选择器查找下载按钮...")
+                    while elapsed_time < max_wait_time and not download_found:
+                        logger.info(f"⏳ 等待中... ({elapsed_time}/{max_wait_time}秒)")
+                        time.sleep(check_interval)
+                        elapsed_time += check_interval
 
-                    monitor_download_selectors = [
-                        # 基本文本匹配
-                        'button:has-text("Download")',
-                        'button:text-is("Download")',
-                        '[role="button"]:has-text("Download")',
-                        'a:has-text("Download")',
+                        # 访问 Home 页面检查 Alerts
+                        logger.info("检查 Home 页面 Alerts...")
+                        self.page.goto(f"{self.url}/a/home", wait_until='networkidle', timeout=60000)
+                        time.sleep(3)
 
-                        # 包含导出/下载的按钮
-                        'button:has-text("Export")',
-                        '[role="button"]:has-text("Export")',
+                        # 查找 Alerts 区域中的 CSV 下载链接
+                        alert_selectors = [
+                            'a:has-text("Your CSV file is ready")',
+                            'a:has-text("CSV")',
+                            '[class*="alert"] a:has-text("Download")',
+                            '[class*="notification"] a:has-text("Download")',
+                            'a[href*=".csv"]',
+                        ]
 
-                        # 可能在特定区域内
-                        '[class*="monitor"] button:has-text("Download")',
-                        '[class*="search"] button:has-text("Download")',
-                        '[class*="action"] button:has-text("Download")',
+                        for selector in alert_selectors:
+                            try:
+                                locator = self.page.locator(selector)
+                                if locator.count() > 0:
+                                    logger.info(f"✅ 在 Alerts 中找到 CSV 下载链接: {selector}")
 
-                        # CSV 相关
-                        'button:has-text("CSV")',
-                        'a:has-text("CSV")',
-                        'a[href*=".csv"]',
+                                    # 尝试下载
+                                    with self.page.expect_download(timeout=30000) as download_info:
+                                        locator.first.click(timeout=5000)
+                                        logger.info("✅ 已点击下载链接")
 
-                        # 通用下载图标
-                        'button[aria-label*="download" i]',
-                        'button[title*="download" i]',
-                        '[data-test*="download"]',
-                        '[data-testid*="download"]',
-                    ]
+                                    download = download_info.value
+                                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                    filename = f"meltwater_export_{timestamp}.csv"
+                                    filepath = os.path.join(self.download_path, filename)
+                                    download.save_as(filepath)
+                                    logger.info(f"✅ 文件已保存: {filepath}")
 
-                    for selector in monitor_download_selectors:
-                        try:
-                            locator = self.page.locator(selector)
-                            count = locator.count()
-                            if count > 0:
-                                logger.info(f"✅ 找到 {count} 个下载元素: {selector}")
+                                    download_found = True
+                                    return filepath
+                            except Exception as e:
+                                logger.debug(f"Alert 选择器失败: {selector} - {str(e)}")
+                                continue
 
-                                # 设置下载事件监听
-                                with self.page.expect_download(timeout=30000) as download_info:
-                                    locator.first.click(timeout=5000)
-                                    logger.info(f"✅ 已点击下载元素: {selector}")
+                        if not download_found:
+                            logger.info(f"⏳ 文件尚未就绪,{check_interval}秒后再次检查...")
 
-                                download = download_info.value
-                                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                                filename = f"meltwater_export_{timestamp}.csv"
-                                filepath = os.path.join(self.download_path, filename)
-                                download.save_as(filepath)
-                                logger.info(f"✅ 文件已保存: {filepath}")
-
-                                download_found = True
-                                return filepath
-                        except Exception as e:
-                            logger.debug(f"尝试下载元素选择器失败: {selector} - {str(e)}")
-                            continue
-
-                if not download_found:
-                    logger.error("❌ 在监控视图中未找到下载按钮")
-                    screenshot_path = os.path.join(self.download_path, "error_no_download_button.png")
+                    if not download_found:
+                        logger.error("❌ 等待超时,导出文件未在规定时间内生成")
+                        screenshot_path = os.path.join(self.download_path, "error_export_timeout.png")
+                        self.page.screenshot(path=screenshot_path, full_page=True)
+                        logger.info(f"已保存超时截图: {screenshot_path}")
+                        raise Exception("导出文件生成超时")
+                else:
+                    logger.error("❌ 未能触发导出请求")
+                    screenshot_path = os.path.join(self.download_path, "error_no_export_button.png")
                     self.page.screenshot(path=screenshot_path, full_page=True)
                     logger.info(f"已保存错误截图: {screenshot_path}")
 
@@ -545,7 +601,7 @@ class MeltwaterDownloader:
                         f.write(self.page.content())
                     logger.info(f"已保存页面 HTML: {html_path}")
 
-                    raise Exception("在监控视图中未找到下载按钮")
+                    raise Exception("未能触发导出请求")
 
         except Exception as e:
             logger.error(f"导出数据时出错: {str(e)}")
