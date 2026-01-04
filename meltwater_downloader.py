@@ -73,38 +73,9 @@ class MeltwaterDownloader:
 
         # 保存初始页面截图用于调试
         try:
-            screenshot_path = os.path.join(self.download_path, "debug_step0_initial.png")
+            screenshot_path = os.path.join(self.download_path, "debug_step1_initial.png")
             self.page.screenshot(path=screenshot_path)
             logger.info(f"已保存初始页面截图: {screenshot_path}")
-        except:
-            pass
-
-        # 步骤0: 选择 Solution - "Social & Media Intelligence"
-        logger.info("步骤0: 尝试选择 Solution...")
-        solution_selectors = [
-            'text=Social & Media Intelligence',
-            'button:has-text("Social & Media Intelligence")',
-            'a:has-text("Social & Media Intelligence")',
-            '[data-testid*="social"]',
-        ]
-
-        for selector in solution_selectors:
-            try:
-                if self.page.locator(selector).count() > 0:
-                    self.page.click(selector, timeout=5000)
-                    logger.info(f"✅ 已选择 Solution: {selector}")
-                    time.sleep(2)
-                    break
-            except:
-                continue
-        else:
-            logger.info("未找到 Solution 选择,可能已在正确页面,继续...")
-
-        # 保存选择 Solution 后的截图
-        try:
-            screenshot_path = os.path.join(self.download_path, "debug_step0.5_after_solution.png")
-            self.page.screenshot(path=screenshot_path)
-            logger.info(f"已保存选择Solution后截图: {screenshot_path}")
         except:
             pass
 
@@ -171,8 +142,22 @@ class MeltwaterDownloader:
 
         # 先清空密码框,然后使用 type() 逐字符输入(处理特殊字符)
         self.page.click(password_selector)
+        time.sleep(0.5)  # 等待字段获得焦点
         self.page.fill(password_selector, '')  # 清空
-        self.page.type(password_selector, self.password, delay=50)  # 逐字符输入,每个字符延迟50ms
+        time.sleep(0.3)  # 等待清空完成
+
+        # 逐字符输入密码
+        logger.info(f"开始输入密码(长度: {len(self.password)})")
+        self.page.type(password_selector, self.password, delay=100)  # 增加延迟到100ms
+        time.sleep(0.5)  # 等待输入完成
+
+        # 验证密码是否被输入(检查 value 属性)
+        password_value = self.page.input_value(password_selector)
+        logger.info(f"密码字段当前值长度: {len(password_value)}")
+        if len(password_value) == 0:
+            logger.error("❌ 密码字段为空,输入失败!")
+        elif len(password_value) != len(self.password):
+            logger.warning(f"⚠️ 密码长度不匹配: 期望 {len(self.password)}, 实际 {len(password_value)}")
 
         # 保存密码填写后的截图
         try:
@@ -184,6 +169,7 @@ class MeltwaterDownloader:
 
         # 点击登录按钮
         logger.info("点击登录按钮...")
+        time.sleep(1)  # 等待1秒再点击登录
         login_button_selector = 'button[type="submit"], button:has-text("Sign In"), button:has-text("Log In")'
         self.page.click(login_button_selector)
 
@@ -192,38 +178,25 @@ class MeltwaterDownloader:
         try:
             # 等待仪表板或主页元素出现
             self.page.wait_for_load_state('networkidle', timeout=60000)
-            time.sleep(5)
+            time.sleep(2)
 
-            # 处理"保存密码"弹窗
-            logger.info("检查是否有保存密码弹窗...")
-            save_password_buttons = [
-                'button:has-text("Not now")',
-                'button:has-text("No thanks")',
-                'button:has-text("Skip")',
-                'button:has-text("Later")',
-                'button:has-text("取消")',
-                'button:has-text("稍后")',
-                '[data-testid*="dismiss"]',
-                '[data-testid*="skip"]',
+            # 处理 passkey 弹窗 - 点击"Continue without passkeys"
+            passkey_continue_selectors = [
+                'a:has-text("Continue without passkeys")',
+                'button:has-text("Continue without passkeys")',
+                'text=Continue without passkeys',
+                '[href*="continue"]',
             ]
 
-            for selector in save_password_buttons:
+            for selector in passkey_continue_selectors:
                 try:
                     if self.page.locator(selector).count() > 0:
-                        self.page.click(selector, timeout=3000)
-                        logger.info(f"✅ 已关闭保存密码弹窗: {selector}")
-                        time.sleep(2)
+                        self.page.click(selector, timeout=5000)
+                        logger.info(f"✅ 已点击跳过 passkey: {selector}")
+                        time.sleep(3)
                         break
                 except:
                     continue
-
-            # 保存登录后的截图
-            try:
-                screenshot_path = os.path.join(self.download_path, "debug_step5_after_login.png")
-                self.page.screenshot(path=screenshot_path)
-                logger.info(f"已保存登录后截图: {screenshot_path}")
-            except:
-                pass
 
             logger.info("登录成功!")
         except PlaywrightTimeout:
@@ -233,79 +206,210 @@ class MeltwaterDownloader:
     def export_data(self, days_back: int = 365):
         """
         导出数据
+        新策略: 直接从 Home 页的 Alerts 区域下载已就绪的文件
 
         Args:
             days_back: 导出过去多少天的数据,默认 365 天(一年)
         """
         logger.info(f"开始导出过去 {days_back} 天的数据...")
 
-        # 计算日期范围
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=days_back)
-
-        logger.info(f"日期范围: {start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}")
-
-        # 注意: 以下是通用导出逻辑示例,实际需要根据 Meltwater 界面调整
-        # 你需要提供具体的 Meltwater 导出流程
-
         try:
-            # 1. 导航到导出页面
-            logger.info("导航到导出页面...")
-            # 示例: 查找并点击 Export/Download 按钮
-            export_selectors = [
-                'button:has-text("Export")',
-                'a:has-text("Export")',
-                'button:has-text("Download")',
-                '[data-testid="export-button"]'
+            # 等待页面完全加载,确保所有动态内容都已渲染
+            logger.info("等待页面完全加载...")
+
+            # 等待页面中的关键元素出现(说明页面已完全加载)
+            try:
+                self.page.wait_for_selector('text=Hello', timeout=10000)
+                logger.info("✅ 检测到欢迎信息")
+            except:
+                logger.warning("未检测到欢迎信息,但继续执行")
+
+            # 额外等待以确保动态内容(包括 Alerts 区域)完全加载
+            # 使用 wait_for_load_state 等待网络空闲
+            logger.info("等待网络空闲...")
+            try:
+                self.page.wait_for_load_state('networkidle', timeout=15000)
+                logger.info("✅ 网络已空闲")
+            except:
+                logger.warning("网络未完全空闲,但继续执行")
+
+            # 再等待 10 秒确保所有 React/JS 渲染完成
+            logger.info("额外等待 10 秒以确保动态内容完全渲染...")
+            time.sleep(10)
+
+            # 保存初始页面截图
+            screenshot_path = os.path.join(self.download_path, "debug_home_page.png")
+            self.page.screenshot(path=screenshot_path, full_page=True)
+            logger.info(f"已保存 Home 页面截图: {screenshot_path}")
+
+            # 新策略: 直接从 Home 页的 Alerts 区域下载
+            # 根据截图,Alerts 区域显示 "ANZ_Coverage_2025" 文件已就绪
+            logger.info("步骤1: 在 Alerts 区域查找 ANZ Coverage 2025 下载按钮...")
+
+            # 尝试找到 Alerts 区域中包含 "ANZ_Coverage_2025" 的下载按钮
+            # 可能的选择器策略:
+            # 1. 找到包含 "ANZ_Coverage_2025" 文本的元素,然后找其附近的 Download 按钮
+            # 2. 直接找所有 Download 按钮,选择最新的一个
+
+            # 策略: 根据截图分析,需要点击 ANZ_Coverage 文件旁边的三点菜单按钮
+            # 然后从菜单中选择下载选项
+
+            download_found = False
+
+            # 先检查是否有 ANZ_Coverage_2025 相关文件
+            anz_text_selectors = [
+                'text=ANZ_Coverage_2025',
+                'text=ANZ Coverage 2025',
+                '[title*="ANZ_Coverage_2025"]',
+                '[aria-label*="ANZ_Coverage_2025"]',
             ]
 
-            for selector in export_selectors:
+            anz_file_exists = False
+            for selector in anz_text_selectors:
                 try:
-                    self.page.click(selector, timeout=5000)
-                    logger.info(f"找到导出按钮: {selector}")
-                    break
+                    if self.page.locator(selector).count() > 0:
+                        logger.info(f"✅ 找到 ANZ Coverage 文件: {selector}")
+                        anz_file_exists = True
+                        break
                 except:
                     continue
+
+            if anz_file_exists:
+                logger.info("步骤2: 在 Alerts 区域点击 Download 按钮...")
+
+                # 根据截图分析,Alerts 面板中每个通知都有一个直接的 "Download" 按钮
+                # 策略: 找到包含 ANZ_Coverage_2025 的通知,然后在该通知容器中找 Download 元素
+
+                # 监听下载事件
+                logger.info("开始监听下载事件...")
+                with self.page.expect_download(timeout=180000) as download_info:
+                    # 尝试多种方式找到并点击 Download 按钮/链接
+                    download_button_selectors = [
+                        # === 按钮 ===
+                        # 通过文本匹配的按钮
+                        'button:has-text("Download")',
+                        'button:text-is("Download")',
+                        '[role="button"]:has-text("Download")',
+
+                        # === 链接 ===
+                        # 可能是链接元素
+                        'a:has-text("Download")',
+                        'a:text-is("Download")',
+                        '[role="link"]:has-text("Download")',
+
+                        # === 特定区域内的按钮/链接 ===
+                        # Alerts 面板内的所有 Download 元素
+                        '[aria-label="Alerts"] button:has-text("Download")',
+                        '[aria-label="Alerts"] a:has-text("Download")',
+                        '[aria-label="Alerts"] [role="button"]:has-text("Download")',
+
+                        # === 父元素导航 ===
+                        # 在 ANZ_Coverage 附近查找
+                        'text=ANZ_Coverage_2025 >> .. >> button',
+                        'text=ANZ_Coverage_2025 >> .. >> a',
+                        'text=ANZ_Coverage_2025 >> .. >> .. >> button',
+                        'text=ANZ_Coverage_2025 >> .. >> .. >> a',
+                        'text=ANZ_Coverage_2025 >> .. >> .. >> .. >> button',
+                        'text=ANZ_Coverage_2025 >> .. >> .. >> .. >> a',
+
+                        # 在 "Your CSV file is ready" 附近查找
+                        'text=Your CSV file is ready >> .. >> button',
+                        'text=Your CSV file is ready >> .. >> a',
+                        'text=Your CSV file is ready >> .. >> .. >> button',
+                        'text=Your CSV file is ready >> .. >> .. >> a',
+
+                        # === 通过 CSS 类或其他属性 ===
+                        # 查找所有按钮样式的元素(可能是 div 或其他)
+                        '[class*="button"]:has-text("Download")',
+                        '[class*="btn"]:has-text("Download")',
+                        'div:has-text("Download")[role="button"]',
+
+                        # === 通过 aria-label ===
+                        'button[aria-label*="Download"]',
+                        'a[aria-label*="Download"]',
+                        '[aria-label*="Download"]',
+
+                        # === CSV 文件链接 ===
+                        # 可能有直接的 CSV 下载链接
+                        'a[href*=".csv"]',
+                        '[aria-label="Alerts"] a[href*=".csv"]',
+                    ]
+
+                    for selector in download_button_selectors:
+                        try:
+                            locator = self.page.locator(selector)
+                            count = locator.count()
+                            if count > 0:
+                                logger.info(f"✅ 找到 {count} 个下载元素: {selector}")
+                                # 点击第一个(最新的)
+                                locator.first.click(timeout=5000)
+                                logger.info(f"✅ 已点击下载元素: {selector}")
+                                download_found = True
+                                break
+                        except Exception as e:
+                            logger.debug(f"尝试下载元素选择器失败: {selector} - {str(e)}")
+                            continue
+
+                    if not download_found:
+                        logger.error("未找到下载按钮")
+                        screenshot_path = os.path.join(self.download_path, "error_no_download_button.png")
+                        self.page.screenshot(path=screenshot_path)
+                        raise Exception("未找到下载按钮")
+
+                    logger.info("等待下载完成...")
+
+                # 保存下载的文件
+                download = download_info.value
+                filename = f"meltwater_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                filepath = os.path.join(self.download_path, filename)
+                download.save_as(filepath)
+
+                logger.info(f"✅ 文件下载成功: {filepath}")
+                return filepath
+
             else:
-                logger.warning("未找到导出按钮,可能需要手动配置选择器")
+                # 如果 Alerts 没有现成文件,走原来的导航流程
+                logger.warning("Alerts 区域没有找到 ANZ Coverage 文件,尝试导航到 Tags 页面...")
 
-            time.sleep(2)
+                # 尝试直接导航到特定 URL
+                tags_url = f"{self.url}/app/tags"
+                logger.info(f"尝试直接访问: {tags_url}")
+                self.page.goto(tags_url, wait_until='networkidle', timeout=30000)
+                time.sleep(5)
 
-            # 2. 选择日期范围
-            logger.info("设置日期范围...")
-            # 这里需要根据实际界面填写日期选择逻辑
+                # 保存截图
+                screenshot_path = os.path.join(self.download_path, "debug_tags_page_direct.png")
+                self.page.screenshot(path=screenshot_path)
+                logger.info(f"已保存 Tags 页面截图: {screenshot_path}")
 
-            # 3. 选择导出格式(CSV)
-            logger.info("选择 CSV 格式...")
-            # 查找 CSV 选项
-
-            # 4. 触发下载
-            logger.info("触发下载...")
-            # 监听下载事件
-            with self.page.expect_download(timeout=120000) as download_info:
-                # 点击最终下载/确认按钮
-                download_button_selectors = [
-                    'button:has-text("Download")',
-                    'button:has-text("Export")',
-                    'button:has-text("Confirm")',
-                    'button[type="submit"]'
+                # 找 ANZ Coverage 2025
+                logger.info("步骤3: 点击 ANZ Coverage 2025...")
+                anz_coverage_selectors = [
+                    'text=ANZ Coverage 2025',
+                    'a:has-text("ANZ Coverage 2025")',
+                    'button:has-text("ANZ Coverage 2025")',
+                    '[title*="ANZ Coverage 2025"]',
                 ]
 
-                for selector in download_button_selectors:
+                anz_found = False
+                for selector in anz_coverage_selectors:
                     try:
-                        self.page.click(selector, timeout=5000)
-                        break
+                        if self.page.locator(selector).count() > 0:
+                            self.page.click(selector, timeout=5000)
+                            logger.info(f"✅ 已点击 ANZ Coverage 2025: {selector}")
+                            time.sleep(3)
+                            anz_found = True
+                            break
                     except:
                         continue
 
-            # 保存下载的文件
-            download = download_info.value
-            filename = f"meltwater_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-            filepath = os.path.join(self.download_path, filename)
-            download.save_as(filepath)
+                if not anz_found:
+                    logger.error("未找到 ANZ Coverage 2025")
+                    screenshot_path = os.path.join(self.download_path, "error_no_anz_coverage.png")
+                    self.page.screenshot(path=screenshot_path)
+                    raise Exception("未找到 ANZ Coverage 2025")
 
-            logger.info(f"文件下载成功: {filepath}")
-            return filepath
+                raise Exception("导航流程暂未完全实现")
 
         except Exception as e:
             logger.error(f"导出数据时出错: {str(e)}")
