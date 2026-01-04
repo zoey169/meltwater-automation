@@ -371,11 +371,11 @@ class MeltwaterDownloader:
                 # 如果 Alerts 没有现成文件,走原来的导航流程
                 logger.warning("Alerts 区域没有找到 ANZ Coverage 文件,尝试导航到 Tags 页面...")
 
-                # 尝试直接导航到特定 URL
+                # 尝试直接导航到特定 URL (使用 load 模式避免 GitHub Actions 超时)
                 tags_url = f"{self.url}/app/tags"
                 logger.info(f"尝试直接访问: {tags_url}")
-                self.page.goto(tags_url, wait_until='networkidle', timeout=30000)
-                time.sleep(5)
+                self.page.goto(tags_url, wait_until='load', timeout=60000)
+                time.sleep(8)  # 增加等待时间让页面完全加载
 
                 # 保存截图
                 screenshot_path = os.path.join(self.download_path, "debug_tags_page_direct.png")
