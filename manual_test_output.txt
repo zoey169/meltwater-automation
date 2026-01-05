@@ -1,0 +1,121 @@
+==========================================
+Meltwater 数据同步开始: 2026-01-04 18:20:54
+==========================================
+
+步骤1: 从 Meltwater 下载数据...
+2026-01-04 18:20:55,010 - INFO - ==================================================
+2026-01-04 18:20:55,010 - INFO - Meltwater 自动下载开始
+2026-01-04 18:20:55,010 - INFO - ==================================================
+2026-01-04 18:20:55,010 - INFO - 启动浏览器...
+2026-01-04 18:20:55,785 - INFO - 浏览器启动成功
+2026-01-04 18:20:55,785 - INFO - 访问 Meltwater: https://app.meltwater.com
+2026-01-04 18:21:04,411 - INFO - 已保存初始页面截图: ./downloads/debug_step1_initial.png
+2026-01-04 18:21:04,411 - INFO - 第一步: 输入邮箱...
+2026-01-04 18:21:04,530 - INFO - 已保存邮箱填写后截图: ./downloads/debug_step2_email_filled.png
+2026-01-04 18:21:04,530 - INFO - 点击 Next 按钮...
+2026-01-04 18:21:04,578 - INFO - 已点击 Next 按钮: button
+2026-01-04 18:21:08,578 - INFO - 已保存等待后截图: ./downloads/debug_step3_after_wait.png
+2026-01-04 18:21:08,578 - INFO - 第二步: 输入密码...
+2026-01-04 18:21:09,445 - INFO - 开始输入密码(长度: 15)
+2026-01-04 18:21:11,495 - INFO - 密码字段当前值长度: 15
+2026-01-04 18:21:11,589 - INFO - 已保存密码填写后截图: ./downloads/debug_step4_password_filled.png
+2026-01-04 18:21:11,589 - INFO - 点击登录按钮...
+2026-01-04 18:21:14,378 - INFO - 等待登录完成...
+2026-01-04 18:21:18,131 - INFO - ✅ 已点击跳过 passkey: button:has-text("Continue without passkeys")
+2026-01-04 18:21:21,136 - INFO - 等待导航到 Home 页面...
+2026-01-04 18:21:30,949 - INFO - ✅ 已导航到 Home 页面
+2026-01-04 18:21:30,949 - INFO - 登录成功!
+2026-01-04 18:21:30,949 - INFO - 开始导出过去 365 天的数据...
+2026-01-04 18:21:30,949 - INFO - 等待页面完全加载...
+2026-01-04 18:21:30,967 - INFO - ✅ 检测到欢迎信息
+2026-01-04 18:21:30,967 - INFO - 等待网络空闲...
+2026-01-04 18:21:35,114 - INFO - ✅ 网络已空闲
+2026-01-04 18:21:35,114 - INFO - 额外等待 10 秒以确保动态内容完全渲染...
+2026-01-04 18:21:45,233 - INFO - 已保存 Home 页面截图: ./downloads/debug_home_page.png
+2026-01-04 18:21:45,233 - INFO - 步骤1: 在 Alerts 区域查找 ANZ Coverage 2025 下载按钮...
+2026-01-04 18:21:45,238 - INFO - ✅ 找到 ANZ Coverage 文件: text=ANZ_Coverage_2025
+2026-01-04 18:21:45,239 - INFO - 步骤2: 在 Alerts 区域点击 Download 按钮...
+2026-01-04 18:21:45,239 - INFO - 开始监听下载事件...
+2026-01-04 18:21:45,265 - INFO - ✅ 找到 3 个下载元素: text=ANZ_Coverage_2025 >> .. >> .. >> button
+2026-01-04 18:21:50,294 - INFO - ✅ 找到 3 个下载元素: text=ANZ_Coverage_2025 >> .. >> .. >> .. >> button
+2026-01-04 18:21:55,312 - INFO - ✅ 找到 3 个下载元素: text=ANZ_Coverage_2025 >> .. >> .. >> .. >> a
+2026-01-04 18:21:55,349 - INFO - ✅ 已点击下载元素: text=ANZ_Coverage_2025 >> .. >> .. >> .. >> a
+2026-01-04 18:21:55,349 - INFO - 等待下载完成...
+2026-01-04 18:21:56,325 - INFO - ✅ 文件下载成功: ./downloads/meltwater_export_20260104_182156.csv
+2026-01-04 18:21:56,325 - INFO - 关闭浏览器...
+2026-01-04 18:21:56,366 - INFO - 浏览器已关闭
+2026-01-04 18:21:56,366 - INFO - ✅ 下载完成: ./downloads/meltwater_export_20260104_182156.csv
+SUCCESS:./downloads/meltwater_export_20260104_182156.csv
+✅ 已下载: ./downloads/meltwater_export_20260104_182156.csv
+
+步骤2: 导入数据到飞书多维表格...
+→ 正在获取 tenant_access_token...
+✓ 成功获取 access_token
+→ 正在获取现有表格中的 Document ID...
+✗ 获取记录失败: {'code': 1254004, 'msg': 'WrongTableId', 'error': {'log_id': '2026010418215646EF4E9E16AB60109954', 'troubleshooter': '排查建议查看(Troubleshooting suggestions): https://open.feishu.cn/search?from=openapi&log_id=2026010418215646EF4E9E16AB60109954&code=1254004&method_id=7301628054955556866'}}
+✓ 找到 0 个现有 Document ID
+→ 读取 CSV 文件: ./downloads/meltwater_export_20260104_182156.csv
+✓ 使用编码: utf-16
+✓ CSV 总记录数: 18
+✓ 重复记录数: 0
+✓ 新增记录数: 18
+
+============================================================
+开始导入数据到飞书多维表格
+目标表格: XjgHbi3EKaLCJlsku1fc4fTVnFe/tblqmDCzRUdDMI3x
+总记录数: 18
+批次大小: 15
+============================================================
+
+→ 分割为 2 个批次
+
+[1/2] 处理批次 1
+  → 包含 15 条记录
+  → 正在插入...
+  ✗ 插入失败: {'code': 1254041, 'msg': 'TableIdNotFound', 'error': {'log_id': '2026010418215751232BB25AFC4D0B7F2A', 'troubleshooter': '排查建议查看(Troubleshooting suggestions): https://open.feishu.cn/search?from=openapi&log_id=2026010418215751232BB25AFC4D0B7F2A&code=1254041&method_id=6965347212289441794'}}
+[2/2] 处理批次 2
+  → 包含 3 条记录
+  → 正在插入...
+  ✗ 插入失败: {'code': 1254041, 'msg': 'TableIdNotFound', 'error': {'log_id': '2026010418215867B43B9C0E9DBC086FE1', 'troubleshooter': '排查建议查看(Troubleshooting suggestions): https://open.feishu.cn/search?from=openapi&log_id=2026010418215867B43B9C0E9DBC086FE1&code=1254041&method_id=6965347212289441794'}}
+
+============================================================
+导入完成!
+成功: 0 条
+失败: 18 条
+总计: 18 条
+成功率: 0.0%
+============================================================
+
+grep: invalid option -- P
+usage: grep [-abcdDEFGHhIiJLlMmnOopqRSsUVvwXxZz] [-A num] [-B num] [-C[num]]
+	[-e pattern] [-f file] [--binary-files=value] [--color=when]
+	[--context[=num]] [--directories=action] [--label] [--line-buffered]
+	[--null] [pattern] [file ...]
+grep: invalid option -- P
+usage: grep [-abcdDEFGHhIiJLlMmnOopqRSsUVvwXxZz] [-A num] [-B num] [-C[num]]
+	[-e pattern] [-f file] [--binary-files=value] [--color=when]
+	[--context[=num]] [--directories=action] [--label] [--line-buffered]
+	[--null] [pattern] [file ...]
+grep: invalid option -- P
+usage: grep [-abcdDEFGHhIiJLlMmnOopqRSsUVvwXxZz] [-A num] [-B num] [-C[num]]
+	[-e pattern] [-f file] [--binary-files=value] [--color=when]
+	[--context[=num]] [--directories=action] [--label] [--line-buffered]
+	[--null] [pattern] [file ...]
+✅ 导入完成: / 条成功
+
+步骤3: 发送飞书通知...
+============================================================
+发送飞书卡片消息通知
+============================================================
+Traceback (most recent call last):
+  File "/Users/admin/Desktop/meltwater-automation/send_feishu_notification.py", line 352, in <module>
+    main()
+    ~~~~^^
+  File "/Users/admin/Desktop/meltwater-automation/send_feishu_notification.py", line 296, in main
+    'success': int(os.getenv('IMPORT_SUCCESS', 0)),
+               ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: ''
+
+==========================================
+Meltwater 数据同步完成: 2026-01-04 18:21:58
+==========================================

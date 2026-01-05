@@ -228,45 +228,109 @@ class MeltwaterDownloader:
     def export_data(self, days_back: int = 365):
         """
         导出数据
-        新策略: 直接从 Home 页的 Alerts 区域下载已就绪的文件
+        新策略: 导航到 Monitor 视图,选择正确的时间范围,触发导出并下载
 
         Args:
             days_back: 导出过去多少天的数据,默认 365 天(一年)
+                      365 天会选择 "Last year" 时间范围
         """
         logger.info(f"开始导出过去 {days_back} 天的数据...")
 
+        # 根据 days_back 确定时间范围选项
+        if days_back >= 365:
+            time_range = "Last year"
+        elif days_back >= 90:
+            time_range = "Last 90 days"
+        elif days_back >= 30:
+            time_range = "Last 30 days"
+        elif days_back >= 7:
+            time_range = "Last 7 days"
+        else:
+            time_range = "Last 24 hours"
+
+        logger.info(f"将使用时间范围: {time_range}")
+
         try:
-            # 等待页面完全加载,确保所有动态内容都已渲染
-            logger.info("等待页面完全加载...")
+            # Step 1: 导航到 Monitor 视图
+            # 使用固定的 search ID 2062364 (ANZ Coverage 2025)
+            monitor_url = "https://app.meltwater.com/a/monitor/view?searches=2062364&type=tag"
+            logger.info(f"步骤1: 导航到 Monitor 视图: {monitor_url}")
+            self.page.goto(monitor_url, wait_until='networkidle', timeout=60000)
+            time.sleep(5)  # 等待页面渲染
 
-            # 等待页面中的关键元素出现(说明页面已完全加载)
-            try:
-                self.page.wait_for_selector('text=Hello', timeout=10000)
-                logger.info("✅ 检测到欢迎信息")
-            except:
-                logger.warning("未检测到欢迎信息,但继续执行")
+            # 保存 Monitor 页面截图
+            screenshot_path = os.path.join(self.download_path, "step1_monitor_page.png")
+            self.page.screenshot(path=screenshot_path)
+            logger.info(f"已保存 Monitor 页面截图: {screenshot_path}")
 
-            # 额外等待以确保动态内容(包括 Alerts 区域)完全加载
-            # 使用 wait_for_load_state 等待网络空闲
-            logger.info("等待网络空闲...")
-            try:
-                self.page.wait_for_load_state('networkidle', timeout=15000)
-                logger.info("✅ 网络已空闲")
-            except:
-                logger.warning("网络未完全空闲,但继续执行")
+            # Step 2: 点击时间范围按钮
+            logger.info(f"步骤2: 查找并点击时间范围按钮...")
+            # 时间范围按钮可能显示当前选择的范围,如 "Last 30 days" 或 "Last year"
+            time_range_button_selectors = [
+                'button:has-text("Last")',
+                'button:has-text("days")',
+                'button:has-text("year")',
+                'button[aria-label*="time"]',
+                'button[aria-label*="date"]',
+            ]
 
-            # 再等待 10 秒确保所有 React/JS 渲染完成
-            logger.info("额外等待 10 秒以确保动态内容完全渲染...")
-            time.sleep(10)
+            time_button_clicked = False
+            for selector in time_range_button_selectors:
+                try:
+                    locator = self.page.locator(selector)
+                    if locator.count() > 0:
+                        logger.info(f"✅ 找到时间范围按钮: {selector}")
+                        locator.first.click(timeout=5000)
+                        logger.info("✅ 已点击时间范围按钮")
+                        time_button_clicked = True
+                        time.sleep(2)  # 等待菜单出现
+                        break
+                except Exception as e:
+                    logger.debug(f"时间范围按钮选择器失败: {selector} - {str(e)}")
+                    continue
 
-            # 保存初始页面截图
-            screenshot_path = os.path.join(self.download_path, "debug_home_page.png")
-            self.page.screenshot(path=screenshot_path, full_page=True)
-            logger.info(f"已保存 Home 页面截图: {screenshot_path}")
+            if not time_button_clicked:
+                raise Exception("未找到时间范围按钮")
 
-            # 新策略: 直接从 Home 页的 Alerts 区域下载
-            # 根据截图,Alerts 区域显示 "ANZ_Coverage_2025" 文件已就绪
-            logger.info("步骤1: 在 Alerts 区域查找 ANZ Coverage 2025 下载按钮...")
+            # 保存菜单截图
+            screenshot_path = os.path.join(self.download_path, "step2_time_menu.png")
+            self.page.screenshot(path=screenshot_path)
+            logger.info(f"已保存时间菜单截图: {screenshot_path}")
+
+            # Step 3: 从菜单中选择时间范围
+            logger.info(f"步骤3: 选择时间范围: {time_range}")
+            time_option_selectors = [
+                f'button:has-text("{time_range}")',
+                f'a:has-text("{time_range}")',
+                f'[role="menuitem"]:has-text("{time_range}")',
+                f'li:has-text("{time_range}")',
+            ]
+
+            time_option_clicked = False
+            for selector in time_option_selectors:
+                try:
+                    locator = self.page.locator(selector)
+                    if locator.count() > 0:
+                        logger.info(f"✅ 找到时间选项: {selector}")
+                        locator.first.click(timeout=5000)
+                        logger.info(f"✅ 已选择: {time_range}")
+                        time_option_clicked = True
+                        time.sleep(3)  # 等待页面更新
+                        break
+                except Exception as e:
+                    logger.debug(f"时间选项选择器失败: {selector} - {str(e)}")
+                    continue
+
+            if not time_option_clicked:
+                raise Exception(f"未找到时间选项: {time_range}")
+
+            # 保存选择后的页面截图
+            screenshot_path = os.path.join(self.download_path, "step3_after_time_selection.png")
+            self.page.screenshot(path=screenshot_path)
+            logger.info(f"已保存时间选择后页面截图: {screenshot_path}")
+
+            # Step 4: 点击 Download 按钮
+            logger.info("步骤4: 查找并点击 Download 按钮...")
 
             # 尝试找到 Alerts 区域中包含 "ANZ_Coverage_2025" 的下载按钮
             # 可能的选择器策略:

@@ -44,11 +44,12 @@ jobs:
           MELTWATER_PASSWORD: ${{ secrets.MELTWATER_PASSWORD }}
           MELTWATER_URL: "https://app.meltwater.com"
           DOWNLOAD_PATH: "./downloads"
+          SEARCH_ID: "2062364"
         run: |
           echo "============================================================"
-          echo "Step 1: Downloading data from Meltwater"
+          echo "Step 1: Downloading data from Meltwater (using v2)"
           echo "============================================================"
-          python3 meltwater_downloader.py 2>&1 | tee download_output.txt
+          python3 meltwater_downloader_v2.py 2>&1 | tee download_output.txt
 
           # 提取下载的文件路径
           CSV_FILE=$(grep "SUCCESS:" download_output.txt | cut -d':' -f2)
